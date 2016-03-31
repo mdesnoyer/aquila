@@ -29,6 +29,7 @@ for z1, z2, z3, z4, _, _ in data:
     win_matrix[z2, z1] = z4
 # --------- /FOR TESTING  ---------- #
 
+VERBOSE = True  # whether or not the print all the shit you're doing
 
 def _get_enqueue_op(fn_phds, lab_phds, queue):
     """
@@ -91,6 +92,8 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
                 indices[sidx] = idx1
                 indices[sidx + 1] = idx2
             except QueueEmpty:
+                if VERBOSE:
+                    print 'Queue is empty, terminating'
                 return
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         image_labels = [win_matrix[x, indices] for x in indices]
@@ -99,6 +102,8 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
                                         image_labels):
             feed_dict[fnp] = fnd
             feed_dict[labp] = labd
+        if VERBOSE:
+            print 'Enqueuing', batch_size, 'examples'
         sess.run(enq_op, feed_dict=feed_dict)
 
 
@@ -136,5 +141,56 @@ class InputManager(object):
         self.inq = Queue(maxsize=1024)
         self.num_threads = num_threads
         self.sess = sess
+        self.fn_phds = [tf.placeholder(tf.string, shape=[]) 
+                        for _ in range(BATCH_SIZE)]
+        self.lab_phds = [tf.placeholder(tf.int32, shape=[BATCH_SIZE]) 
+                         for _ in range(BATCH_SIZE)]
+        self.threads = [Thread(target=_worker,
+                               args=(win_matrix, filemap, imdir, batch_size, 
+                                     self.inq, self.outq, self.fn_phds, 
+                                     self.lab_phds, sess))]
+        self.mgr_thread = Thread(target=self._Mgr)
+        self.n_examples = 0
+        self.should_stop = Event()
+
+    def start(self):
+        """
+        Starts all the threads
+        """
+        self.mgr_thread.start()
+        for t in threads:
+            t.start()
+
+    def join(self):
+        """
+        Joins all threads
+        """
+        self.mgr_thread.join()
+        for t in threads:
+            t.join()
+
+    def should_stop(self):
+        """
+        Indicates wether or not TensorFlow should halt
+        """
+        return self.should_stop.is_set()
+
+    def _Mgr(self):
+        """
+        Manager class method. Should be started as a thread.
+        """
+        for t in threads:
+            t.start()
+        a, b = self.win_matrix.nonzero()
+        idxs = filter(lambda x: x[0] < x[1], zip(a,b))
+        for epoch in range(num_epochs):
+            np.random.shuffle(idxs)
+            for idxs_pair in idxs:
+                self.inq.put(idxs_pair)
+                self.n_examples += 1
+        self.should_stop.set()
+
+
+
 
 
