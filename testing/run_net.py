@@ -223,9 +223,9 @@ def get_loss(y_):
 	Returns a loss object given the output of a net and the label
 	"""
 	m_ = tf_lab_q.dequeue_many(BATCH_SIZE)
-	y_m_ = tf.mul(y_, 0.95*ones_)
+	y_m_ = tf.mul(y_, ones_)
 	y_diff_ = tf.sub(y_m_, tf.transpose(y_m_))
-	t_1_ = -tf.mul(ones_, y_diff_)
+	t_1_ = -tf.mul(0.95*ones_, y_diff_)
 	t_2_ = tf.log(ones_ + tf.exp(y_diff_))
 	sum_ = tf.add(t_1_, t_2_)
 	mult_sum_ = tf.mul(m_, sum_)
