@@ -15,6 +15,8 @@ max_width = 558
 new_size = (max_width, max_height)
 for n, im in enumerate(ims):
     nfn = os.path.join(dst, im.split('/')[-1])
+    if os.path.exists(nfn):
+        continue
     imd = Image.open(im)
     w, h = imd.size
     asp = float(w) / h
