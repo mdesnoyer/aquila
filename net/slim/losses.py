@@ -29,7 +29,7 @@ def ranknet_loss(y, m_):
     sum_ = tf.add(t_1_, t_2_)
     mult_sum_ = tf.mul(m_, sum_)
     loss_ = tf.reduce_sum(mult_sum_) / tf.reduce_sum(m_)
-    return loss_
+    return loss_, m_
 
 
 def accuracy(y, m_):
@@ -48,7 +48,7 @@ def accuracy(y, m_):
     zeros_ = tf.zeros_like(m_, dtype=tf.float32)
     y_m_ = tf.mul(y, ones_)
     y_diff_ = tf.sub(y_m_, tf.transpose(y_m_))
-    pos_y_diff = tf.greater(y_diff_, zeros_)
+    pos_y_diff = tf.to_float(tf.greater(y_diff_, zeros_))
     num_corr_ = tf.reduce_sum(tf.mul(pos_y_diff, m_))
     accuracy_ = num_corr_ / tf.reduce_sum(m_)
     return accuracy_
