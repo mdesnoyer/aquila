@@ -12,7 +12,7 @@ BATCH_SIZE = 16
 IM_H = 128
 IM_W = 128
 LEARNING_RATE = 0.01
-DISPLAY_STEP = 20
+DISPLAY_STEP = 200
 N_INPUT = IM_H * IM_W
 STD_DEV = 0.01
 WLFN = '/Users/davidlea/Desktop/testing/win_data/winlist.npy'
@@ -81,32 +81,35 @@ def _worker(n_epochs, tf_fn_Q, tf_lab_Q, sess):
 	'''
 	enq_c = 0
 	idx_l = range(data.shape[0])
-	for i in range(n_epochs+1):
-		print 'Starting epoch %i' % i
-		# generate a shuffle
-		np.random.shuffle(idx_l)
+	try:
 		cur_sidx = 0
-		for idx in idx_l:
-			l1 = np.zeros(BATCH_SIZE)
-			l1_idx = cur_sidx
-			cur_sidx += 1
-			l2 = np.zeros(BATCH_SIZE)
-			l2_idx = cur_sidx
-			cur_sidx += 1
-			cur_sidx = cur_sidx % BATCH_SIZE
-			f1 = fnmap[data[idx, 0]]
-			f2 = fnmap[data[idx, 1]]
-			l1[l2_idx] = data[idx, 2]
-			l2[l1_idx] = data[idx, 3]
-			try:
-				sess.run(tf_fn_enqueue_op, feed_dict={tf_fn_phd: f1})
-				sess.run(tf_lab_enqueue_op, feed_dict={tf_lab_phd: l1.astype(np.float32)})
-				sess.run(tf_fn_enqueue_op, feed_dict={tf_fn_phd: f2})
-				sess.run(tf_lab_enqueue_op, feed_dict={tf_lab_phd: l2.astype(np.float32)})
-			except:
-				print 'ERROR!'
-				return
-			enq_c += 1
+		for i in range(n_epochs+1):
+			print 'Starting epoch %i' % i
+			# generate a shuffle
+			np.random.shuffle(idx_l)
+			for idx in idx_l:
+				l1 = np.zeros(BATCH_SIZE)
+				l1_idx = cur_sidx
+				cur_sidx += 1
+				l2 = np.zeros(BATCH_SIZE)
+				l2_idx = cur_sidx
+				cur_sidx += 1
+				cur_sidx = cur_sidx % BATCH_SIZE
+				f1 = fnmap[data[idx, 0]]
+				f2 = fnmap[data[idx, 1]]
+				l1[l2_idx] = data[idx, 2]
+				l2[l1_idx] = data[idx, 3]
+				try:
+					sess.run(tf_fn_enqueue_op, feed_dict={tf_fn_phd: f1})
+					sess.run(tf_lab_enqueue_op, feed_dict={tf_lab_phd: l1.astype(np.float32)})
+					sess.run(tf_fn_enqueue_op, feed_dict={tf_fn_phd: f2})
+					sess.run(tf_lab_enqueue_op, feed_dict={tf_lab_phd: l2.astype(np.float32)})
+				except:
+					print 'ERROR!'
+					return
+				enq_c += 1
+	except Exception as e:
+		print 'GERRORRRR', e.message
 	print 'Queue is done'
 
 
@@ -129,7 +132,7 @@ def norm(name, l_input, lsize=4):
 def alex_net(inp_queue, _weights, _biases):
     # Reshape input picture
     _X = inp_queue.dequeue_many(BATCH_SIZE)
-
+    tf.image_summary('inputs', _X, max_images=3, collections=None, name=None)
     # Convolution Layer
     conv1 = conv2d('conv1', _X, _weights['wc1'], _biases['bc1'])
     print conv1.get_shape()
@@ -232,9 +235,66 @@ def get_loss(y_):
 	loss_ = tf.reduce_sum(mult_sum_) / tf.reduce_sum(m_)
 	return loss_, m_
 
+def ranknet_loss(y, m_):
+    """
+    Implements the RankNet loss function given the outputs of a net and the
+    outcome matrix. Also returns the accuracy (fraction of correct predictions).
+
+    NOTES:
+        y and m_ must be the same shape!
+
+        This doesnt do the ridiculous loss collection crap that the other
+        implementation does. It's vastly too complex for our purposes.
+
+    :param y: A tensor of predictions from the network. (float32)
+    :param m_: The win matrix, m_[i,j] = number of times i has beaten j. (
+    float32)
+    :return: The TensorFlow loss operation.
+    """
+    conf = 1.0
+    ones_ = tf.ones_like(m_, dtype=tf.float32)
+    y_m_ = tf.mul(y, ones_)
+    y_diff_ = tf.sub(y_m_, tf.transpose(y_m_))
+    t_1_ = -tf.mul(conf*ones_, y_diff_)
+    t_2_ = tf.log(ones_ + tf.exp(y_diff_))
+    sum_ = tf.add(t_1_, t_2_)
+    mult_sum_ = tf.mul(m_, sum_)
+    loss_ = tf.reduce_sum(mult_sum_) / tf.reduce_sum(m_)
+    return loss_, m_
+
+
+def accuracy(y, m_):
+    """
+    Computes accuracy (fraction of correct predictions).
+
+    NOTES:
+        y and m_ must be the same shape!
+
+    :param y: A tensor of predictions from the network. (float32)
+    :param m_: The win matrix, m_[i,j] = number of times i has beaten j. (
+    float32)
+    :return: The TensorFlow accuracy operation.
+    """
+    ones_ = tf.ones_like(m_, dtype=tf.float32)
+    zeros_ = tf.zeros_like(m_, dtype=tf.float32)
+    y_m_ = tf.mul(y, ones_)
+    y_diff_ = tf.sub(y_m_, tf.transpose(y_m_))
+    pos_y_diff = tf.to_float(tf.greater(y_diff_, zeros_))
+    num_corr_ = tf.reduce_sum(tf.mul(pos_y_diff, m_))
+    accuracy_ = num_corr_ / tf.reduce_sum(m_)
+    return accuracy_
+
 # Construct model
 pred, inp = alex_net(tf_fn_q, weights, biases)
-cost, m_mat = get_loss(pred)
+#cost, m_mat = get_loss(pred)
+m_ = tf_lab_q.dequeue_many(BATCH_SIZE)
+m_4d_ = tf.reshape(m_, [1, BATCH_SIZE, BATCH_SIZE, 1])
+tf.image_summary('win_matrix', m_4d_, max_images=1, collections=None, name=None)
+
+cost, m_mat = ranknet_loss(pred, m_)
+acc = accuracy(pred, m_)
+accuracy_summary = tf.scalar_summary("accuracy", acc)
+cost_summary = tf.scalar_summary("cost", cost)
 optimizer = tf.train.GradientDescentOptimizer(learning_rate=LEARNING_RATE).minimize(cost)
 
 init = tf.initialize_all_variables()
@@ -245,12 +305,21 @@ val_pred = alex_net_val(val_X, weights, biases)
 n_batches_per_epoch = data.shape[0] / BATCH_SIZE
 n_iterations = n_batches_per_epoch * N_EPOCHS
 
+merged = tf.merge_all_summaries()
+
 def_graph = tf.get_default_graph()
 ops = def_graph.get_operations()
 ops_dict = {cop.name: cop for cop in ops}
 # launch the graph
 p = None
+
+
+# p = plot(av_accs)
+# p = p[0]
+# ax = p.get_axes()
+m_mats = []
 with tf.Session() as sess:
+	writer = tf.train.SummaryWriter("/tmp/toy", sess.graph_def)
 	thread = threading.Thread(target=_worker, args=(N_EPOCHS, tf_fn_q, tf_lab_q, sess))
 	thread.daemon = True
 	thread.start()	
@@ -258,31 +327,33 @@ with tf.Session() as sess:
 	print val_X.get_shape()
 	# there are 16 * 10 trials per epoch, so 10 batches per epoch
 	for c_iter in range(n_iterations):
-		_loss, _opti = sess.run([cost, optimizer])
-		#_mat, _pred, _loss, _opti = sess.run([m_mat, pred, cost, optimizer])
-		np.save('/tmp/preds_%i' % c_iter, _pred)
-		np.save('/tmp/labels_%i' % c_iter, _mat.astype(int))
-		# if not c_iter:
-		# 	m_mat, _inp = sess.run([m_mat, inp])
-		# 	np.save('/tmp/labels', m_mat)
-		# 	np.save('/tmp/inputs', _inp)
-		# 	conv1_out = sess.run(ops_dict['conv1'])
-		# 	print "Input:", _inp
-		# 	print "Conv1:", conv1_out
-		# 	asdf
-		if not c_iter % DISPLAY_STEP:
-			all_pred = sess.run([val_pred])
-			all_pred = np.squeeze(np.array(all_pred[0]))
-			#print "All predictions:",all_pred
-			all_pred -= np.min(all_pred)
-			all_pred /= np.max(all_pred)
-			try:
-				p.set_ydata(all_pred)
-			except:
-				p = plot(all_pred)
-				p = p[0]
-			pause(0.1)
-		print "Iter", c_iter, "minibatch loss:", _loss 
+		#_loss, _opti, _acc, _m_mat = sess.run([cost, optimizer, acc, m_mat])
+		# _loss, _opti = sess.run([cost, optimizer])
+		summary_str, _loss, _opti, _acc, _m_mat = sess.run([merged, cost, optimizer, acc, m_mat])
+		#m_mats.append(_m_mat)
+		if not c_iter % 10:
+			writer.add_summary(summary_str, c_iter)
+		# if not c_iter % DISPLAY_STEP:
+		# 	all_pred = sess.run([val_pred, ])
+		# 	all_pred = np.squeeze(np.array(all_pred[0]))
+		# 	#print "All predictions:",all_pred
+		# 	all_pred -= np.min(all_pred)
+		# 	all_pred /= np.max(all_pred)
+		# 	try:
+		# 		p.set_ydata(all_pred)
+		# 	except:
+		# 		p = plot(all_pred)
+		# 		p = p[0]
+		# 	pause(0.1)
+		# accs.append(_acc)
+		# av_accs.append(np.mean(accs[-50:]))
+		# if not c_iter % DISPLAY_STEP:
+		# 	p.set_data(np.arange(len(av_accs)), av_accs)
+		# 	ax.set_xlim([0, len(av_accs)])
+		# 	ax.set_ylim([0, 1])
+		# 	pause(0.1)
+		# print "Iter", c_iter, "minibatch loss:", _loss, "minibatch accuracy:", _acc
+		print "Iter", c_iter, "minibatch loss:", _loss, "minibatch accuracy:", _acc
 
 # it was failing because the win matrix was not being generated correctly...
 
