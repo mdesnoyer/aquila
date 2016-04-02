@@ -4,6 +4,84 @@ Implements the loss function for training as well as the accuracy function.
 import tensorflow as tf
 
 
+LOSSES_COLLECTION = '_losses'
+
+
+def l1_loss(tensor, weight=1.0, scope=None):
+  """Define a L1Loss, useful for regularize, i.e. lasso.
+
+  Args:
+    tensor: tensor to regularize.
+    weight: scale the loss by this factor.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    the L1 loss op.
+  """
+  with tf.op_scope([tensor], scope, 'L1Loss'):
+    weight = tf.convert_to_tensor(weight,
+                                  dtype=tensor.dtype.base_dtype,
+                                  name='loss_weight')
+    loss = tf.mul(weight, tf.reduce_sum(tf.abs(tensor)), name='value')
+    tf.add_to_collection(LOSSES_COLLECTION, loss)
+    return loss
+
+
+def l2_loss(tensor, weight=1.0, scope=None):
+  """Define a L2Loss, useful for regularize, i.e. weight decay.
+
+  Args:
+    tensor: tensor to regularize.
+    weight: an optional weight to modulate the loss.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    the L2 loss op.
+  """
+  with tf.op_scope([tensor], scope, 'L2Loss'):
+    weight = tf.convert_to_tensor(weight,
+                                  dtype=tensor.dtype.base_dtype,
+                                  name='loss_weight')
+    loss = tf.mul(weight, tf.nn.l2_loss(tensor), name='value')
+    tf.add_to_collection(LOSSES_COLLECTION, loss)
+    return loss
+
+
+def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
+                       weight=1.0, scope=None):
+  """Define a Cross Entropy loss using softmax_cross_entropy_with_logits.
+
+  It can scale the loss by weight factor, and smooth the labels.
+
+  Args:
+    logits: [batch_size, num_classes] logits outputs of the network .
+    one_hot_labels: [batch_size, num_classes] target one_hot_encoded labels.
+    label_smoothing: if greater than 0 then smooth the labels.
+    weight: scale the loss by this factor.
+    scope: Optional scope for op_scope.
+
+  Returns:
+    A tensor with the softmax_cross_entropy loss.
+  """
+  logits.get_shape().assert_is_compatible_with(one_hot_labels.get_shape())
+  with tf.op_scope([logits, one_hot_labels], scope, 'CrossEntropyLoss'):
+    num_classes = one_hot_labels.get_shape()[-1].value
+    one_hot_labels = tf.cast(one_hot_labels, logits.dtype)
+    if label_smoothing > 0:
+      smooth_positives = 1.0 - label_smoothing
+      smooth_negatives = label_smoothing / num_classes
+      one_hot_labels = one_hot_labels * smooth_positives + smooth_negatives
+    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits,
+                                                            one_hot_labels,
+                                                            name='xentropy')
+    weight = tf.convert_to_tensor(weight,
+                                  dtype=logits.dtype.base_dtype,
+                                  name='loss_weight')
+    loss = tf.mul(weight, tf.reduce_mean(cross_entropy), name='value')
+    tf.add_to_collection(LOSSES_COLLECTION, loss)
+    return loss
+
+
 def ranknet_loss(y, m_):
     """
     Implements the RankNet loss function given the outputs of a net and the
@@ -29,6 +107,7 @@ def ranknet_loss(y, m_):
     sum_ = tf.add(t_1_, t_2_)
     mult_sum_ = tf.mul(m_, sum_)
     loss_ = tf.reduce_sum(mult_sum_) / tf.reduce_sum(m_)
+    tf.add_to_collection(LOSSES_COLLECTION, loss_)
     return loss_, m_
 
 

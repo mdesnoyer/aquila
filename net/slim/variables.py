@@ -77,7 +77,7 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import scopes
+from net.slim import scopes
 
 # Collection containing all the variables created using slim.variables
 VARIABLES_COLLECTION = '_variables_'

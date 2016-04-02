@@ -20,7 +20,7 @@
         logits, endpoints = slim.inception.inception_v3(
             images,
             dropout_keep_prob=0.8,
-            num_classes=num_classes,
+            num_abs_features=num_abs_features,
             is_training=for_training,
             restore_logits=restore_logits,
             scope=scope)
@@ -32,20 +32,24 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-import ops
-import scopes
+from net.slim import ops
+from net.slim import scopes
+# from . import ops
+# from . import scopes
+# import ops
+# import scopes
 
 
-def aquila(inputs, dropout_keep_prob=0.8, num_classes=1024, is_training=True,
+def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,
            restore_logits=True, scope=''):
   """
   Args:
     inputs: a tensor of size [batch_size, height, width, channels].
     dropout_keep_prob: dropout keep_prob.
-    num_classes: number of predicted classes.
+    num_abs_features: number of predicted classes.
     is_training: whether is training or not.
     restore_logits: whether or not the logits layers should be restored.
-      Useful for fine-tuning a model with different num_classes.
+      Useful for fine-tuning a model with different num_abs_features.
     scope: Optional scope for op_scope.
 
   Returns:
@@ -233,7 +237,7 @@ def aquila(inputs, dropout_keep_prob=0.8, num_classes=1024, is_training=True,
           aux_logits = ops.conv2d(aux_logits, 768, shape[1:3], stddev=0.01,
                                   padding='VALID')
           aux_logits = ops.flatten(aux_logits)
-          aux_logits = ops.fc(aux_logits, num_classes, activation=None,
+          aux_logits = ops.fc(aux_logits, num_abs_features, activation=None,
                               stddev=0.001, restore=restore_logits)
           aux_logits = ops.fc(aux_logits, 1, activation=None, stddev=0.001,
                               restore=restore_logits)
@@ -298,8 +302,8 @@ def aquila(inputs, dropout_keep_prob=0.8, num_classes=1024, is_training=True,
           net = ops.dropout(net, dropout_keep_prob, scope='dropout')
           net = ops.flatten(net, scope='flatten')
           # 2048
-          abstract_feats = ops.fc(net, num_classes, activation=None,
-                                  scope='logits', restore=restore_logits)
+          abstract_feats = ops.fc(net, num_abs_features, activation=None,
+                                  scope='abst_feats', restore=restore_logits)
           # 1024
           logits = ops.fc(abstract_feats, 1, activation=None, scope='logits',
                           restore=restore_logits)

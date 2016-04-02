@@ -30,9 +30,9 @@ import tensorflow as tf
 
 from tensorflow.python.training import moving_averages
 
-import losses
-import scopes
-import variables
+from net.slim import losses
+from net.slim import scopes
+from net.slim import variables
 
 # Used to keep the update ops done by batch_norm.
 UPDATE_OPS_COLLECTION = '_update_ops_'

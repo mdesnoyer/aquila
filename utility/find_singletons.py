@@ -42,11 +42,14 @@ for n, xxx in enumerate(singleton_idxs):
         s_idx2.append(xxx)
 testing_win_mtx = sparse.lil_matrix((x.shape))
 training_win_mtx = x.copy()
+all_ids = []
 print 'Creating test / train matrices'
 for idxa, idxb in zip(s_idx1, s_idx2):
     testing_win_mtx[idxa, idxb] = x[idxa, idxb]
     testing_win_mtx[idxb, idxa] = x[idxb, idxa]
     training_win_mtx[idxa, idxb] = 0
     training_win_mtx[idxb, idxa] = 0
-io.mmwrite('task_data/datasets/training/win_matrix.mtx', training_win_mtx)
+    all_ids.append(fnmap[idxa])
+    all_ids.append(fnmap[idxb])
+io.mmwrite('task_data/datasets/train/win_matrix.mtx', training_win_mtx)
 io.mmwrite('task_data/datasets/test/win_matrix.mtx', testing_win_mtx)
