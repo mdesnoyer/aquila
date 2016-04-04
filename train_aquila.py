@@ -1,4 +1,14 @@
 """
+----------------------------------------
+NOTES:                                 |
+        THIS IS DEPRICATED             |
+Now we're using a more inception-like  |
+model that will be more extensible (i  |
+hope) to multiple GPUs.                |
+----------------------------------------
+"""
+
+"""
 Runs the training of Aquila.
 """
 
