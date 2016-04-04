@@ -83,7 +83,7 @@ def cross_entropy_loss(logits, one_hot_labels, label_smoothing=0,
     return loss
 
 
-def ranknet_loss(y, m_, conf=0.999, scope=None):
+def ranknet_loss(y, m_, conf=0.999, weight=1.0, scope=None):
     """
     Implements the RankNet loss function given the outputs of a net and the
     outcome matrix. Also returns the accuracy (fraction of correct predictions).
@@ -101,6 +101,7 @@ def ranknet_loss(y, m_, conf=0.999, scope=None):
     perhaps more appropriate to call it "regularization". This effectively
     imposes an optimal separation between scores when there is precisely one
     win.
+    :param weight: How much weight to assign to this function.
     :param scope: The scope for this operation.
     :return: The TensorFlow loss operation.
     """
@@ -114,7 +115,7 @@ def ranknet_loss(y, m_, conf=0.999, scope=None):
         mult_sum_ = tf.mul(m_, sum_)
         loss_ = tf.reduce_sum(mult_sum_) / tf.reduce_sum(m_)
         tf.add_to_collection(LOSSES_COLLECTION, loss_)
-        return loss_, m_
+        return weight * loss_
 
 
 def accuracy(y, m_, scope=None):

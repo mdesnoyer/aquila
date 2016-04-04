@@ -115,7 +115,7 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
 class InputManager(object):
     def __init__(self, win_matrix, filemap,
                  imdir, tf_out, fn_phds,
-                 lab_phds, enq_op, sess,
+                 lab_phds, enq_op,
                  batch_size=32, num_epochs=100,
                  num_threads=4):
         """
@@ -135,7 +135,6 @@ class InputManager(object):
         :param fn_phds: A list of TensorFlow placeholders of len batch_size (type: (tf.string, shape=[]))
         :param lab_phds: A list of TensorFlow placeholders of len batch_size (type: (tf.int32, shape=[batch_size]))
         :param enq_op: The TensorFlow enqueue operation.
-        :param sess: A TensorFlow session manager.
         :param batch_size: The size of a batch.
         :param num_epochs: The number of epochs to run for.
         :param num_threads: The number of threads to spawn.
@@ -153,21 +152,24 @@ class InputManager(object):
         self.fn_phds = fn_phds
         self.lab_phds = lab_phds
         self.enq_op = enq_op
+        self.num_threads = num_threads
         a, b = self.win_matrix.nonzero()
         self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
-        self.threads = [Thread(target=_worker,
-                               args=(win_matrix, filemap, imdir, batch_size,
-                                     self.inq, self.outq, fn_phds,
-                                     lab_phds, enq_op, sess))
-                        for _ in range(num_threads)]
-        self.mgr_thread = Thread(target=self._Mgr)
+        self.num_ex_per_epoch = len(idxs)
         self.n_examples = 0
         self.should_stop = Event()
 
-    def start(self):
+    def start(self, sess):
         """
-        Starts all the threads
+        Create & Starts all the threads
         """
+        self.threads = [Thread(target=_worker,
+                               args=(self.win_matrix, self.filemap, self.imdir, 
+                                     self.batch_size, self.inq, self.outq, 
+                                     self.fn_phds, self.lab_phds, self.enq_op, 
+                                     sess))
+                        for _ in range(self.num_threads)]
+        self.mgr_thread = Thread(target=self._Mgr)
         for t in self.threads:
             t.daemon = True
             t.start()

@@ -34,10 +34,6 @@ import tensorflow as tf
 
 from net.slim import ops
 from net.slim import scopes
-# from . import ops
-# from . import scopes
-# import ops
-# import scopes
 
 
 def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,
