@@ -1,2 +1,3 @@
 venv/*
 task_data/*
+*.pyc
