@@ -29,6 +29,9 @@ NUM_ABS_FEATURES = 1024  # the number of abstract features to use
 IS_TRAINING = True
 RESTORE_LOGITS = True  # you should save and restore the logits
 
+# TODO: TESTING
+scope = 'tower_0'
+
 fnmap = dict()
 print 'Loading index to filename map'
 with open(FILE_MAP_LOC, 'r') as f:
@@ -37,7 +40,7 @@ with open(FILE_MAP_LOC, 'r') as f:
         fnmap[int(idx)] = fn + '.jpg'
 print 'Loading win matrix'
 win_matrix = sparse.lil_matrix(io.mmread(WIN_MATRIX_LOC).astype(np.uint8))
-# ---------  FOR TESTING  ---------- #
+# TODO: ---------  FOR TESTING  ---------- #
 outQ = tf.FIFOQueue(128, [tf.float32, tf.float32], shapes=[[299, 299, 3],
                                                            [32]])
 fn_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
@@ -64,19 +67,27 @@ with arg_scope([ops.conv2d, ops.fc], weight_decay=0.00004):
                 num_abs_features=NUM_ABS_FEATURES,
                 is_training=IS_TRAINING,
                 restore_logits=RESTORE_LOGITS,
-                scope='')
+                scope=scope)
 
-comb_loss = ranknet_loss(endpoints['logits'], labels) + \
-            ranknet_loss(endpoints['aux_logits'], labels)
 
-regularization_losses = tf.get_collection(losses.LOSSES_COLLECTION, '')
+main_loss = ranknet_loss(endpoints['logits'], labels, scope=None)
+aux_loss = ranknet_loss(endpoints['aux_logits'], labels, scope=None)
 
-total_loss = comb_loss + regularization_losses
+# comb_loss = [ranknet_loss(endpoints['logits'], labels),
+#              ranknet_loss(endpoints['aux_logits'], labels)]
+tf_losses = tf.get_collection(losses.LOSSES_COLLECTION, scope)
 
-sess = tf.InteractiveSession()
-imgr = InputManager(win_matrix, fnmap, IMG_DIR, outQ, fn_phds, lab_phds,
-                    enq_op, sess, BATCH_SIZE, num_epochs=3, num_threads=1)
-imgr.start()
+regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+total_loss = tf.add_n(tf_losses + regularization_losses, name='total_loss')
+
+# create loss averaging
+loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+loss_averages_op = loss_averages.apply(tf_losses + [total_loss])
+
+# sess = tf.InteractiveSession()
+# imgr = InputManager(win_matrix, fnmap, IMG_DIR, outQ, fn_phds, lab_phds,
+#                     enq_op, sess, BATCH_SIZE, num_epochs=3, num_threads=1)
+# imgr.start()
 
 # while not imgr.should_stop():
-# --------- /FOR TESTING  ---------- #
+# TODO: --------- /FOR TESTING  ---------- #
