@@ -93,7 +93,7 @@ class InputManager(object):
     def __init__(self, win_matrix, filemap,
                  imdir, tf_out, fn_phds,
                  lab_phds, enq_op,
-                 batch_size=32, num_epochs=100,
+                 batch_size, num_epochs=100,
                  num_threads=4):
         """
         Creates an object that manages the input to TensorFlow by managing a

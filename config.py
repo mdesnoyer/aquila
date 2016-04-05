@@ -39,7 +39,7 @@ num_epochs_per_decay = 30.0
 learning_rate_decay_factor = 0.16
 
 
-BATCH_SIZE = 32
+BATCH_SIZE = 8
 
 NUM_EPOCHS = 200
 
