@@ -12,10 +12,10 @@ subset = 'train'
 num_gpus = 4
 
 # Whether to log device placement.
-log_device_placement = False
+log_device_placement = True
 
 # the number of preprocessing threads to create
-num_preprocess_threads = 8
+num_preprocess_threads = 2
 
 # the number of abstract features to learn
 abs_feats = 1024
@@ -39,7 +39,7 @@ num_epochs_per_decay = 30.0
 learning_rate_decay_factor = 0.16
 
 
-BATCH_SIZE = 8
+BATCH_SIZE = 16
 
 NUM_EPOCHS = 200
 
