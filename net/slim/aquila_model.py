@@ -72,6 +72,7 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
         end_points['pool1'] = ops.max_pool(end_points['conv2'], [3, 3],
                                            stride=2, scope='pool1')
         # 73 x 73 x 64
+        # 73 x 73 x 64
         end_points['conv3'] = ops.conv2d(end_points['pool1'], 80, [1, 1],
                                          scope='conv3')
         # 71 x 71 x 80.

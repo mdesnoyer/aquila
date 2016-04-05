@@ -85,12 +85,26 @@ def loss(logits, labels):
     by slim.losses. The losses are accumulated later along with the regularization
     loss.
 
-    :param y: The predicted image scores as a list of [BATCH_SIZE] float32 tensors.
+    :param logits: The predicted image scores as a list of [BATCH_SIZE] float32
+    tensors.
     :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
     :returns: None.
     """
     slim.losses.ranknet_loss(logits[0], labels, weight=1.0)
     slim.losses.ranknet_loss(logits[1], labels, weight=0.4, scope='aux_loss')
+
+
+def accuracy(logits, labels):
+    """
+    Computes the accuracy of the output of the final logit layer. We
+    disregard the action of the auxiliary logit head in this case.
+
+    :param logits:  The predicted image scores as a list of [BATCH_SIZE]
+    float32 tensors. Note that only the first element of this list is used.
+    :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
+    :return: The accuracy op.
+    """
+    return slim.losses.accuracy(logits[0], labels)
 
 
 def _activation_summary(x):
