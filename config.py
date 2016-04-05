@@ -14,7 +14,7 @@ num_gpus = 4
 # Whether to log device placement.
 log_device_placement = False  # this produces *so much* output!
 
-# the number of preprocessing threads to create -- even 2 is more than
+# the number of preprocessing threads to create -- just 2 is more than
 # sufficient, even for 4 gpus (apparently?)
 num_preprocess_threads = 2
 
