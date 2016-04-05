@@ -261,7 +261,7 @@ def train(inp_mgr, ex_per_epoch):
             print(format_str % (datetime.now(), step+1, max_steps, loss_value,
                                                     examples_per_sec, duration))
 
-        if step % 100 == 0:
+        if step % 10 == 0:
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
 

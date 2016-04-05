@@ -17,7 +17,7 @@ with open(MPFN, 'r') as f:
         fnmap[int(idx)] = fn + '.jpg'
 
 print 'Loading win matrix'
-x = sparse.lil_matrix(io.mmread('task_data/aggregated_data/test.mtx'))
+x = sparse.lil_matrix(io.mmread('task_data/aggregated_data/win_matrix.mtx'))
 print 'Complete, transposing x'
 xT = x.transpose()
 x_ax_sum = np.squeeze(np.array(x.sum(axis=0)))
