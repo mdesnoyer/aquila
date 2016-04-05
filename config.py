@@ -12,7 +12,7 @@ subset = 'train'
 num_gpus = 4
 
 # Whether to log device placement.
-log_device_placement = True
+log_device_placement = False  # this produces *so much* output!
 
 # the number of preprocessing threads to create
 num_preprocess_threads = 2
