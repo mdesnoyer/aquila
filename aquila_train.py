@@ -254,18 +254,18 @@ def train(inp_mgr, ex_per_epoch):
 
         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-        if step % 1 == 0:  # TODO: Change this back to 10
+        if step % 10 == 0:  # TODO: Change this back to 10
             examples_per_sec = BATCH_SIZE / float(duration)
             format_str = ('%s: step %d/%i, loss = %.2f (%.1f examples/sec; '
                           '%.3f sec/batch)')
             print(format_str % (datetime.now(), step+1, max_steps, loss_value,
                                                     examples_per_sec, duration))
 
-        if step % 10 == 0:
+        if step % 200 == 0:
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
 
         # Save the model checkpoint periodically.
-        if step % 5000 == 0 or (step + 1) == max_steps:
+        if step % 15000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)

@@ -14,15 +14,15 @@ import tensorflow as tf
 from scipy import io
 from scipy import sparse
 
-IMG_DIR = '/other/testing_ims' # TODO: Change from testing!
-FILE_MAP_LOC = '/repos/aquila/task_data/aggregated_data/idx_2_id'
+IMG_DIR = '/data/images'
+FILE_MAP_LOC = '/data/datasets/idx_2_id'
 BATCH_SIZE = config.BATCH_SIZE
 NUM_EPOCHS = config.NUM_EPOCHS
 
 if config.subset == 'train':
-    WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/test/win_matrix.mtx'
+    WIN_MATRIX_LOC = '/data/datasets/train/win_matrix.mtx'
 else:
-    WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/train/win_matrix.mtx'
+    WIN_MATRIX_LOC = '/data/datasets/test/win_matrix.mtx'
 
 fnmap = dict()
 print 'Loading index to filename map'

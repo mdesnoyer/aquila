@@ -3,22 +3,19 @@ Configuration for Aquila
 """
 
 # where to write event logs and checkpoints
-train_dir = '/tmp/aquila_train'
-
-# the maximum number of steps to take
-max_steps = 1000000
+train_dir = '/data/aquila_snaps'
 
 # 'train' or 'validation'
 subset = 'train'
 
 # how many gpus to use
-num_gpus = 1
+num_gpus = 4
 
 # Whether to log device placement.
 log_device_placement = False
 
 # the number of preprocessing threads to create
-num_preprocess_threads = 4
+num_preprocess_threads = 8
 
 # the number of abstract features to learn
 abs_feats = 1024
@@ -30,8 +27,7 @@ abs_feats = 1024
 restore_logits = False
 
 # restore the pretrained model from this location
-pretrained_model_checkpoint_path = \
-    '/repos/tensorflow/models/inception/pretrained/inception-v3/model.ckpt-157585'
+pretrained_model_checkpoint_path = '/data/pretrained/model.ckpt-157585'
 
 # the initial learning rate
 initial_learning_rate = 0.05
@@ -45,7 +41,7 @@ learning_rate_decay_factor = 0.16
 
 BATCH_SIZE = 32
 
-NUM_EPOCHS = 300
+NUM_EPOCHS = 200
 
 # Constants dictating the learning rate schedule.
 RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
