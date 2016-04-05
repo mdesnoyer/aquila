@@ -11,30 +11,8 @@ from threading import Event
 from Queue import Queue
 from Queue import Empty as QueueEmpty
 
-# TODO: Eliminate testing shit below
-# # ---------  FOR TESTING  ---------- #
-# from scipy import sparse
-# from scipy import io
-# MPFN = '/repos/aquila/task_data/aggregated_data/idx_2_id'
-# fnmap = dict()
-# print 'Loading index to filename map'
-# with open(MPFN, 'r') as f:
-#     for line in f:
-#         idx, fn = line.strip().split(',')
-#         fnmap[int(idx)] = fn + '.jpg'
-# print 'Creating win matrix - This takes a while'
-# # wm_size = np.max(fnmap.keys()) + 1
-# # win_matrix = sparse.lil_matrix((wm_size, wm_size), dtype=np.uint8)
-# # data = np.load('/repos/aquila/task_data/aggregated_data/win_data.npy')
-# # win_matrix[data[:,0], data[:,1]] = data[:,2]
-# # win_matrix[data[:,1], data[:,0]] = data[:,3]
-# win_matrix = io.mmread('/media/nick/d216eb37-b0e1-478c-b170-2270d7699ea21/repos'
-#                        '/aquila/task_data/aggregated_data/test.mtx').astype(
-#     np.uint8)
-# print 'Done -- starting tensorflow stuffs'
-# # --------- /FOR TESTING  ---------- #
 
-VERBOSE = True  # whether or not the print all the shit you're doing
+VERBOSE = False  # whether or not the print all the shit you're doing
 
 
 def get_enqueue_op(fn_phds, lab_phds, queue):
@@ -154,9 +132,8 @@ class InputManager(object):
         a, b = self.win_matrix.nonzero()
         # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
         # why was i doing this? ^^^
-        # TODO: Testing
-        self.idxs = zip(a[:16], b[:16])
-        # self.idxs = zip(a, b)
+        # self.idxs = zip(a[:16], b[:16])
+        self.idxs = zip(a, b)
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
@@ -202,18 +179,6 @@ class InputManager(object):
         for t in self.threads:
             t.join()
         self.should_stop.set()
-
-# TODO: Eliminate testing shit below
-# ---------  FOR TESTING  ---------- #
-# sess = tf.InteractiveSession()
-# outQ = tf.FIFOQueue(128, [tf.float32, tf.float32], shapes=[[299, 299, 3],
-#                                                            [32]])
-# imgr = InputManager(win_matrix, fnmap, imdir='/data/aquila_training_images',
-#                     batch_size=32, num_epochs=5, tf_out=outQ, sess=sess,
-#                     num_threads=1)
-# imgr.start()
-# while not imgr.should_stop():
-# --------- /FOR TESTING  ---------- #
 
 
 
