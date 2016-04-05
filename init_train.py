@@ -33,7 +33,7 @@ with open(FILE_MAP_LOC, 'r') as f:
 print 'Loading win matrix'
 win_matrix = sparse.lil_matrix(io.mmread(WIN_MATRIX_LOC).astype(np.uint8))
 
-outQ = tf.FIFOQueue(128, [tf.float32, tf.float32], shapes=[[299, 299, 3],
+outQ = tf.FIFOQueue(32*16, [tf.float32, tf.float32], shapes=[[299, 299, 3],
                                                            [32]])
 fn_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
 lab_phds = [tf.placeholder(tf.int32, 
