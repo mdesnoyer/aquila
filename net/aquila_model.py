@@ -104,7 +104,7 @@ def accuracy(logits, labels):
     :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
     :return: The accuracy op.
     """
-    return slim.losses.accuracy(logits[0], labels)
+    return slim.losses.accuracy(logits[0], labels, scope='accuracy')
 
 
 def _activation_summary(x):
@@ -119,8 +119,8 @@ def _activation_summary(x):
     # Remove 'tower_[0-9]/' from the name in case this is a multi-GPU training
     # session. This helps the clarity of presentation on tensorboard.
     tensor_name = re.sub('%s_[0-9]*/' % TOWER_NAME, '', x.op.name)
-    tf.histogram_summary(tensor_name + '/activations', x)
-    tf.scalar_summary(tensor_name + '/sparsity', tf.nn.zero_fraction(x))
+    tf.histogram_summary('|_' + tensor_name + '/activations', x)
+    tf.scalar_summary('|_' + tensor_name + '/sparsity', tf.nn.zero_fraction(x))
 
 
 def _activation_summaries(endpoints):
