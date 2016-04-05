@@ -142,6 +142,7 @@ def train(inp_mgr, ex_per_epoch):
                 # function constructs the entire ImageNet model but shares the
                 # variables across all towers.
                 inputs, labels = inp_mgr.outq.dequeue_many(split_batch_size)
+                tf.scalar_summary('input_queue_size', inp_mgr.outq.size())
                 m_4d_ = tf.reshape(labels, [1, split_batch_size,
                                             split_batch_size, 1])
                 tf.image_summary('win_matrix', m_4d_, max_images=1,
