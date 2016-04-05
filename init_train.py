@@ -17,11 +17,12 @@ from scipy import sparse
 IMG_DIR = '/other/testing_ims' # TODO: Change from testing!
 FILE_MAP_LOC = '/repos/aquila/task_data/aggregated_data/idx_2_id'
 BATCH_SIZE = config.BATCH_SIZE
+NUM_EPOCHS = config.NUM_EPOCHS
 
 if config.subset == 'train':
-	WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/test/win_matrix.mtx'
+    WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/test/win_matrix.mtx'
 else:
-	WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/train/win_matrix.mtx'
+    WIN_MATRIX_LOC = '/repos/aquila/task_data/datasets/train/win_matrix.mtx'
 
 fnmap = dict()
 print 'Loading index to filename map'
@@ -36,11 +37,12 @@ outQ = tf.FIFOQueue(128, [tf.float32, tf.float32], shapes=[[299, 299, 3],
                                                            [32]])
 fn_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
 lab_phds = [tf.placeholder(tf.int32, 
-								shape=[BATCH_SIZE]) for _ in range(BATCH_SIZE)]
+                           shape=[BATCH_SIZE]) for _ in range(BATCH_SIZE)]
 enq_op = get_enqueue_op(fn_phds, lab_phds, outQ)
 
 imgr = InputManager(win_matrix, fnmap, IMG_DIR, outQ, fn_phds, lab_phds,
-                    enq_op, BATCH_SIZE, num_epochs=3, num_threads=1)
+                    enq_op, BATCH_SIZE, num_epochs=NUM_EPOCHS, num_threads=1)
 
-aquila_train(imgr, num_epochs, imgr.num_ex_per_epoch)
+aquila_train.train(imgr, imgr.num_ex_per_epoch)
+
 

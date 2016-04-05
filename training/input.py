@@ -98,7 +98,6 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
                 if VERBOSE:
                     print 'Queue is empty, terminating'
                 return
-        print 'enqueuing', os.path.join(imdir, filemap[indices[0]])
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in indices]
         feed_dict = dict()
@@ -148,14 +147,17 @@ class InputManager(object):
         self.outq = tf_out
         self.inq = Queue(maxsize=1024)
         self.num_threads = num_threads
-        self.sess = sess
         self.fn_phds = fn_phds
         self.lab_phds = lab_phds
         self.enq_op = enq_op
         self.num_threads = num_threads
         a, b = self.win_matrix.nonzero()
-        self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
-        self.num_ex_per_epoch = len(idxs)
+        # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
+        # why was i doing this? ^^^
+        # TODO: Testing
+        self.idxs = zip(a[:16], b[:16])
+        # self.idxs = zip(a, b)
+        self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
 

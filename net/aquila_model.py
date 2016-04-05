@@ -11,8 +11,6 @@ import re
 import tensorflow as tf
 from net.slim import slim
 
-FLAGS = tf.app.flags.FLAGS
-
 
 # If a model is trained using multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -62,7 +60,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
                 batch_norm_params=batch_norm_params):
             # Force all Variables to reside on the CPU.
             with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
-                logits, endpoints = slim.aquila_model.aquila(
+                logits, endpoints = slim.aquila.aquila(
                     inputs,
                     dropout_keep_prob=0.8,
                     num_abs_features=abs_feats,
@@ -78,6 +76,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
 
     return logits, auxiliary_logits
 
+
 def loss(logits, labels):
     """
     Adds all losses for the model.
@@ -90,8 +89,8 @@ def loss(logits, labels):
     :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
     :returns: None.
     """
-    slim.ranknet_loss(logits[0], labels, weight=1.0)
-    slim.ranknet_loss(logits[1], labels, weight=0.4, scope='aux_loss')
+    slim.losses.ranknet_loss(logits[0], labels, weight=1.0)
+    slim.losses.ranknet_loss(logits[1], labels, weight=0.4, scope='aux_loss')
 
 
 def _activation_summary(x):

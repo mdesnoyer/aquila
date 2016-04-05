@@ -15,8 +15,6 @@ import os.path
 import re
 import time
 
-
-
 import numpy as np
 import tensorflow as tf
 
@@ -45,7 +43,7 @@ def _tower_loss(inputs, labels, scope):
     logits = aquila.inference(inputs, abs_feats, for_training=True,
                               restore_logits=restore_logits, scope=scope)
     # create the loss graph
-    aquila.loss(inputs, labels)
+    aquila.loss(logits, labels)
 
     # fetch the actual losses, both the ranknet and the regularization loss
     # functions.
@@ -103,7 +101,7 @@ def _average_gradients(tower_grads):
     return average_grads
 
 
-def train(inp_mgr, num_epochs, ex_per_epoch):
+def train(inp_mgr, ex_per_epoch):
     """
     Trains the network for some number of epochs.
 
@@ -115,7 +113,8 @@ def train(inp_mgr, num_epochs, ex_per_epoch):
                 'global_step', [],
                 initializer=tf.constant_initializer(0), trainable=False)
 
-    num_batches_per_epoch = ex_per_epoch / NUM_BATCHES
+    num_batches_per_epoch = ex_per_epoch / BATCH_SIZE
+    max_steps = int(num_batches_per_epoch * NUM_EPOCHS)
     decay_steps = int(num_batches_per_epoch * num_epochs_per_decay)
     lr = tf.train.exponential_decay(initial_learning_rate,
                                     global_step,
@@ -143,6 +142,14 @@ def train(inp_mgr, num_epochs, ex_per_epoch):
                 # function constructs the entire ImageNet model but shares the
                 # variables across all towers.
                 inputs, labels = inp_mgr.outq.dequeue_many(split_batch_size)
+                m_4d_ = tf.reshape(labels, [1, split_batch_size,
+                                            split_batch_size, 1])
+                tf.image_summary('win_matrix', m_4d_, max_images=1,
+                                 collections=[tf.GraphKeys.SUMMARIES],
+                                 name=None)
+                tf.image_summary('images', inputs, max_images=4,
+                                 collections=[tf.GraphKeys.SUMMARIES],
+                                 name=None)
                 loss = _tower_loss(inputs, labels, scope)
 
                 # Reuse variables for the next tower.
@@ -235,21 +242,23 @@ def train(inp_mgr, num_epochs, ex_per_epoch):
     # start the input manager?
     inp_mgr.start(sess)
 
-    summary_writer = tf.train.SummaryWriter(
-                train_dir, graph_def=sess.graph.as_graph_def(add_shapes=True))
-
-    for step in xrange(FLAGS.max_steps):
+    # summary_writer = tf.train.SummaryWriter(
+    #             train_dir, graph_def=sess.graph.as_graph_def(add_shapes=True))
+    summary_writer = tf.train.SummaryWriter(train_dir, sess.graph_def)
+    print('%s: Model running for %i iterations' %
+          (datetime.now(), max_steps))
+    for step in xrange(max_steps):
         start_time = time.time()
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
 
         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-        if step % 10 == 0:
-            examples_per_sec = FLAGS.batch_size / float(duration)
-            format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
-                                        'sec/batch)')
-            print(format_str % (datetime.now(), step, loss_value,
+        if step % 1 == 0:  # TODO: Change this back to 10
+            examples_per_sec = BATCH_SIZE / float(duration)
+            format_str = ('%s: step %d/%i, loss = %.2f (%.1f examples/sec; '
+                          '%.3f sec/batch)')
+            print(format_str % (datetime.now(), step+1, max_steps, loss_value,
                                                     examples_per_sec, duration))
 
         if step % 100 == 0:
@@ -257,6 +266,6 @@ def train(inp_mgr, num_epochs, ex_per_epoch):
             summary_writer.add_summary(summary_str, step)
 
         # Save the model checkpoint periodically.
-        if step % 5000 == 0 or (step + 1) == FLAGS.max_steps:
-            checkpoint_path = os.path.join(FLAGS.train_dir, 'model.ckpt')
+        if step % 5000 == 0 or (step + 1) == max_steps:
+            checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
