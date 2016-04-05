@@ -255,11 +255,11 @@ def train(inp_mgr, ex_per_epoch):
 
         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
-        if step % 10 == 0:  # TODO: Change this back to 10
+        if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
-            format_str = ('%s: step %d/%i, loss = %.2f (%.1f examples/sec; '
+            format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '
                           '%.3f sec/batch)')
-            print(format_str % (datetime.now(), step+1, max_steps, loss_value,
+            print(format_str % (datetime.now(), step, loss_value,
                                                     examples_per_sec, duration))
 
         if step % 200 == 0:
