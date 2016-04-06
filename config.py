@@ -16,7 +16,7 @@ log_device_placement = False  # this produces *so much* output!
 
 # the number of preprocessing threads to create -- just 2 is more than
 # sufficient, even for 4 gpus (apparently?)
-num_preprocess_threads = 2
+num_preprocess_threads = 1
 
 # the number of abstract features to learn
 abs_feats = 1024
