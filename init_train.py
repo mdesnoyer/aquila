@@ -42,7 +42,8 @@ lab_phds = [tf.placeholder(tf.int32,
 enq_op = get_enqueue_op(fn_phds, lab_phds, outQ)
 
 imgr = InputManager(win_matrix, fnmap, IMG_DIR, outQ, fn_phds, lab_phds,
-                    enq_op, BATCH_SIZE, num_epochs=NUM_EPOCHS, num_threads=1)
+                    enq_op, BATCH_SIZE, num_epochs=NUM_EPOCHS, num_threads=1,
+                    debug_dir='/data/training_epoch_sequence')
 
 aquila_train.train(imgr, imgr.num_ex_per_epoch)
 

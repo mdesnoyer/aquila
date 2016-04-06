@@ -94,7 +94,8 @@ class InputManager(object):
                  imdir, tf_out, fn_phds,
                  lab_phds, enq_op,
                  batch_size, num_epochs=100,
-                 num_threads=4):
+                 num_threads=4,
+                 debug_dir=None):
         """
         Creates an object that manages the input to TensorFlow by managing a
         set of threads that enqueue batches of images. Handles all shuffling
@@ -109,12 +110,16 @@ class InputManager(object):
         :param filemap: A dictionary that maps indices to image filenames.
         :param imdir: The directory that contains the input images.
         :param tf_out: The FIFO output queue.
-        :param fn_phds: A list of TensorFlow placeholders of len batch_size (type: (tf.string, shape=[]))
-        :param lab_phds: A list of TensorFlow placeholders of len batch_size (type: (tf.int32, shape=[batch_size]))
+        :param fn_phds: A list of TensorFlow placeholders of len batch_size
+        (type: (tf.string, shape=[]))
+        :param lab_phds: A list of TensorFlow placeholders of len batch_size
+        (type: (tf.int32, shape=[batch_size]))
         :param enq_op: The TensorFlow enqueue operation.
         :param batch_size: The size of a batch.
         :param num_epochs: The number of epochs to run for.
         :param num_threads: The number of threads to spawn.
+        :param debug_dir: If not None, it will store the ordering in which it
+        stores the ordering of the inputs per epoch so errors may be re-created.
         :return: An instance of InputManager
         """
         self.win_matrix = win_matrix
@@ -129,6 +134,7 @@ class InputManager(object):
         self.lab_phds = lab_phds
         self.enq_op = enq_op
         self.num_threads = num_threads
+        self.debug_dir = debug_dir
         a, b = self.win_matrix.nonzero()
         # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
         # why was i doing this? ^^^
@@ -172,6 +178,9 @@ class InputManager(object):
         """
         for epoch in range(self.num_epochs):
             np.random.shuffle(self.idxs)
+            if self.debug_dir is not None:
+                fn = os.path.join(self.debug_dir, 'epoch_%i' % epoch)
+                np.save(fn, self.idxs)
             for idxs_pair in self.idxs:
                 self.inq.put(idxs_pair)
                 self.n_examples += 1

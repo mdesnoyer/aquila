@@ -142,9 +142,6 @@ def train(inp_mgr, ex_per_epoch):
 
     # Calculate the gradients for each model tower.
     tower_grads = []
-    all_labels = []
-    all_loss = []
-    all_logits = []
 
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
@@ -169,10 +166,6 @@ def train(inp_mgr, ex_per_epoch):
 
                 # Retain the summaries from the final tower.
                 summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
-
-                all_labels.append(labels)
-                all_loss.append(loss)
-                all_logits.append(logits)
 
                 # Retain the Batch Normalization updates operations only from the
                 # final tower. Ideally, we should grab the updates from all towers
@@ -268,10 +261,8 @@ def train(inp_mgr, ex_per_epoch):
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
 
-        assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
-
-        import pdb
-        pdb.set_trace()
+        assert not np.isnan(loss_value), 'Model diverged with loss = NaN on ' \
+                                         'epoch %i' % step
 
         if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
