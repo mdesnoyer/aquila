@@ -262,6 +262,8 @@ def train(inp_mgr, ex_per_epoch):
         duration = time.time() - start_time
 
         if np.isnan(loss_value):
+            summary_str = sess.run(summary_op)
+            summary_writer.add_summary(summary_str, step)
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
             raise Exception('Model diverged with loss = NaN on epoch %i' % step)
