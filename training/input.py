@@ -123,7 +123,7 @@ def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
                 if VERBOSE:
                     print 'Queue is empty, terminating'
                 return
-            labs = np.zeros((1, batch_size)).astype(int)
+            labs = np.zeros(batch_size).astype(int)
             labs[sidx + 1] = 1
             image_labels.append(labs)
             image_labels.append(np.zeros(batch_size).astype(int))
