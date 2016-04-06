@@ -222,7 +222,7 @@ def train(inp_mgr, ex_per_epoch):
                                             batchnorm_updates_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.all_variables())
+    saver = tf.train.Saver(tf.all_variables(), max_to_keep=20)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.merge_summary(summaries)
@@ -278,6 +278,6 @@ def train(inp_mgr, ex_per_epoch):
             summary_writer.add_summary(summary_str, step)
 
         # Save the model checkpoint periodically.
-        if step % 15000 == 0 or (step + 1) == max_steps:
+        if step % 5000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
