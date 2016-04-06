@@ -269,7 +269,7 @@ def train(inp_mgr, ex_per_epoch):
             saver.save(sess, checkpoint_path, global_step=step)
             raise Exception('Model diverged with loss = NaN on epoch %i' % step)
 
-        if step % 10 == 0:
+        if step % 1 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
             format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '
                           '%.3f sec/batch)')
