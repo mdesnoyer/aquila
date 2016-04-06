@@ -1,7 +1,7 @@
 """
 Version 2 of Aquila Training.
 
-This borrows more from the Inception training module, since I'm more able to 
+This borrows more from the Inception training module, since I'm more able to
 comprehend it moreso now.
 """
 
@@ -29,7 +29,7 @@ def _tower_loss(inputs, labels, scope):
     """
     Calculates the loss for a single tower, which is specified by scope.
 
-    NOTES:  
+    NOTES:
         Unlike in the original implementation for Inception, we will instead
         be dequeueing multiple batches for each tower.
 
@@ -67,20 +67,20 @@ def _tower_loss(inputs, labels, scope):
     tf.scalar_summary('accuracy', loss_averages.average(accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
-    return total_loss
+    return total_loss, logits
 
 
 def _average_gradients(tower_grads):
     """
     Calculate the average gradient for each shared variable across all towers.
 
-    NOTES: 
+    NOTES:
         This function provides a synchronization point across all towers.
 
-    :param tower_grads: List of lists of (gradient, variable) tuples. The outer 
+    :param tower_grads: List of lists of (gradient, variable) tuples. The outer
     list is over individual gradients. The inner list is over the gradient
     calculation for each tower.
-    :returns: List of pairs of (gradient, variable) where the gradient has been 
+    :returns: List of pairs of (gradient, variable) where the gradient has been
     averaged across all towers.
     """
     average_grads = []
@@ -142,6 +142,10 @@ def train(inp_mgr, ex_per_epoch):
 
     # Calculate the gradients for each model tower.
     tower_grads = []
+    all_labels = []
+    all_loss = []
+    all_logits = []
+
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
@@ -158,13 +162,17 @@ def train(inp_mgr, ex_per_epoch):
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
-                loss = _tower_loss(inputs, labels, scope)
+                loss, logits = _tower_loss(inputs, labels, scope)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
 
                 # Retain the summaries from the final tower.
                 summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+
+                all_labels.append(labels)
+                all_loss.append(loss)
+                all_logits.append(logits)
 
                 # Retain the Batch Normalization updates operations only from the
                 # final tower. Ideally, we should grab the updates from all towers
@@ -210,7 +218,7 @@ def train(inp_mgr, ex_per_epoch):
     variable_averages = tf.train.ExponentialMovingAverage(
             aquila.MOVING_AVERAGE_DECAY, global_step)
 
-    # Another possiblility is to use tf.slim.get_variables().
+    # Another possibility is to use tf.slim.get_variables().
     variables_to_average = (tf.trainable_variables() +
                             tf.moving_average_variables())
     variables_averages_op = variable_averages.apply(variables_to_average)
@@ -261,6 +269,9 @@ def train(inp_mgr, ex_per_epoch):
         duration = time.time() - start_time
 
         assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+
+        import pdb
+        pdb.set_trace()
 
         if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
