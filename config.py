@@ -31,7 +31,7 @@ restore_logits = False
 pretrained_model_checkpoint_path = ''  # '/data/pretrained/model.ckpt-157585'
 
 # the initial learning rate
-initial_learning_rate = 0.075
+initial_learning_rate = 0.05
 
 # epochs after which learning rate decays
 num_epochs_per_decay = 5.0
