@@ -44,7 +44,7 @@ def get_enqueue_op(fn_phds, lab_phds, queue):
 
 
 def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
-            lab_phds, enq_op, sess):
+            lab_phds, enq_op, single_win_mapping, sess):
     """
     The target of the worker threads. Manages the actual execution of the
     enqueuing of data.
@@ -60,6 +60,8 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
     :param fn_phds: Filename TensorFlow placeholders.
     :param lab_phds: Label TensorFlow placeholders.
     :param enq_op: A tensorflow enqueue operation.
+    :param single_win_mapping: If True, then it will treat an example as
+    having a single win.
     :param sess: A TensorFlow session manager.
     :return: None
     """
@@ -77,7 +79,10 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
                     print 'Queue is empty, terminating'
                 return
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
-        image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in indices]
+        image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in
+                        indices]
+        if single_win_mapping:
+            image_labels = [(x > 0).astype(int) for x in image_labels]
         feed_dict = dict()
         # populate the feeder dictionary
         for fnp, fnd, labp, labd in zip(fn_phds, image_fns, lab_phds,
@@ -95,7 +100,8 @@ class InputManager(object):
                  lab_phds, enq_op,
                  batch_size, num_epochs=100,
                  num_threads=4,
-                 debug_dir=None):
+                 debug_dir=None,
+                 single_win_mapping=False):
         """
         Creates an object that manages the input to TensorFlow by managing a
         set of threads that enqueue batches of images. Handles all shuffling
@@ -120,6 +126,8 @@ class InputManager(object):
         :param num_threads: The number of threads to spawn.
         :param debug_dir: If not None, it will store the ordering in which it
         stores the ordering of the inputs per epoch so errors may be re-created.
+        :param single_win_mapping: If True, then it will repeatedly enqueue
+        items about which we have more data.
         :return: An instance of InputManager
         """
         self.win_matrix = win_matrix
@@ -135,11 +143,18 @@ class InputManager(object):
         self.enq_op = enq_op
         self.num_threads = num_threads
         self.debug_dir = debug_dir
+        self.single_win_mapping = single_win_mapping
         a, b = self.win_matrix.nonzero()
         # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
         # why was i doing this? ^^^
         # self.idxs = zip(a[:16], b[:16])
-        self.idxs = zip(a, b)
+        if not single_win_mapping:
+            self.idxs = zip(a, b)
+        else:
+            self.idxs = []
+            for a, b in zip(a, b):
+                for _ in self.win_matrix[a, b]:
+                    self.idxs.append([a, b])
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
@@ -152,7 +167,7 @@ class InputManager(object):
                                args=(self.win_matrix, self.filemap, self.imdir, 
                                      self.batch_size, self.inq, self.outq, 
                                      self.fn_phds, self.lab_phds, self.enq_op, 
-                                     sess))
+                                     self.single_win_mapping, sess))
                         for _ in range(self.num_threads)]
         self.mgr_thread = Thread(target=self._Mgr)
         for t in self.threads:
