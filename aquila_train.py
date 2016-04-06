@@ -67,7 +67,7 @@ def _tower_loss(inputs, labels, scope):
     tf.scalar_summary('accuracy', loss_averages.average(accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
-    return total_loss, logits
+    return total_loss
 
 
 def _average_gradients(tower_grads):
@@ -159,7 +159,7 @@ def train(inp_mgr, ex_per_epoch):
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
-                loss, logits = _tower_loss(inputs, labels, scope)
+                loss = _tower_loss(inputs, labels, scope)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
