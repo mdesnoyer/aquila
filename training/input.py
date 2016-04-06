@@ -208,6 +208,7 @@ class InputManager(object):
         """
         Create & Starts all the threads
         """
+        self.mgr_thread.start()
         if self.single_win_mapping:
             targ = _single_win_map_worker
         else:
@@ -222,7 +223,6 @@ class InputManager(object):
         for t in self.threads:
             t.daemon = True
             t.start()
-        self.mgr_thread.start()
 
     def join(self):
         """
