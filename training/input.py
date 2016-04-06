@@ -71,7 +71,7 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
     while True:
         for sidx in np.arange(0, batch_size, 2):
             try:
-                idx1, idx2 = inq.get(True, 5)
+                idx1, idx2 = inq.get(True, 30)
                 indices[sidx] = idx1
                 indices[sidx + 1] = idx2
             except QueueEmpty:
@@ -81,6 +81,8 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in
                         indices]
+        import pdb
+        pdb.set_trace()
         if single_win_mapping:
             image_labels = [(x > 0).astype(int) for x in image_labels]
         feed_dict = dict()
@@ -155,8 +157,6 @@ class InputManager(object):
             for a, b in zip(a, b):
                 for _ in range(self.win_matrix[a, b]):
                     self.idxs.append([a, b])
-        import pdb
-        pdb.set_trace()
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
