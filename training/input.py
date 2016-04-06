@@ -153,7 +153,7 @@ class InputManager(object):
         else:
             self.idxs = []
             for a, b in zip(a, b):
-                for _ in self.win_matrix[a, b]:
+                for _ in range(self.win_matrix[a, b]):
                     self.idxs.append([a, b])
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
