@@ -44,7 +44,7 @@ def get_enqueue_op(fn_phds, lab_phds, queue):
 
 
 def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
-            lab_phds, enq_op, single_win_mapping, sess):
+            lab_phds, enq_op, sess):
     """
     The target of the worker threads. Manages the actual execution of the
     enqueuing of data.
@@ -60,8 +60,6 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
     :param fn_phds: Filename TensorFlow placeholders.
     :param lab_phds: Label TensorFlow placeholders.
     :param enq_op: A tensorflow enqueue operation.
-    :param single_win_mapping: If True, then it will treat an example as
-    having a single win.
     :param sess: A TensorFlow session manager.
     :return: None
     """
@@ -81,10 +79,55 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in
                         indices]
-        import pdb
-        pdb.set_trace()
-        if single_win_mapping:
-            image_labels = [(x > 0).astype(int) for x in image_labels]
+        feed_dict = dict()
+        # populate the feeder dictionary
+        for fnp, fnd, labp, labd in zip(fn_phds, image_fns, lab_phds,
+                                        image_labels):
+            feed_dict[fnp] = fnd
+            feed_dict[labp] = labd
+        if VERBOSE:
+            print 'Enqueuing', batch_size, 'examples'
+        sess.run(enq_op, feed_dict=feed_dict)
+
+
+def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
+                           fn_phds, lab_phds, enq_op, sess):
+    """
+    The target of the worker threads. Manages the actual execution of the
+    enqueuing of data. This worker is responsible for working under the
+    single_win_mapping == True regime.
+
+    :param win_matrix: A sparse matrix or array X where X[i,j] = number
+    of wins of item i over item j.
+    :param filemap: A dictionary that maps indices to image filenames.
+    :param imdir: The directory that contains the input images.
+    :param batch_size: The size of a batch.
+    :param inq: An input queue that stores the indicies of datapoints to
+    measure. The input queue consists of tuples of indices (i, j).
+    :param outq: The TensorFlow output queue.
+    :param fn_phds: Filename TensorFlow placeholders.
+    :param lab_phds: Label TensorFlow placeholders.
+    :param enq_op: A tensorflow enqueue operation.
+    :param sess: A TensorFlow session manager.
+    :return: None
+    """
+    indices = np.zeros(batch_size).astype(int)
+    while True:
+        image_labels = []
+        for sidx in np.arange(0, batch_size, 2):
+            try:
+                idx1, idx2 = inq.get(True, 30)
+                indices[sidx] = idx1
+                indices[sidx + 1] = idx2
+            except QueueEmpty:
+                if VERBOSE:
+                    print 'Queue is empty, terminating'
+                return
+            labs = np.zeros((1, batch_size)).astype(int)
+            labs[sidx + 1] = 1
+            image_labels.append(labs)
+            image_labels.append(np.zeros((1, batch_size)).astype(int))
+        image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         feed_dict = dict()
         # populate the feeder dictionary
         for fnp, fnd, labp, labd in zip(fn_phds, image_fns, lab_phds,
@@ -165,11 +208,15 @@ class InputManager(object):
         """
         Create & Starts all the threads
         """
-        self.threads = [Thread(target=_worker,
+        if self.single_win_mapping:
+            targ = _single_win_map_worker
+        else:
+            targ = _worker
+        self.threads = [Thread(target=targ,
                                args=(self.win_matrix, self.filemap, self.imdir,
                                      self.batch_size, self.inq, self.outq,
                                      self.fn_phds, self.lab_phds, self.enq_op,
-                                     self.single_win_mapping, sess))
+                                     sess))
                         for _ in range(self.num_threads)]
         self.mgr_thread = Thread(target=self._Mgr)
         for t in self.threads:
