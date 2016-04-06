@@ -126,7 +126,7 @@ def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
             labs = np.zeros((1, batch_size)).astype(int)
             labs[sidx + 1] = 1
             image_labels.append(labs)
-            image_labels.append(np.zeros((1, batch_size)).astype(int))
+            image_labels.append(np.zeros(batch_size).astype(int))
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         feed_dict = dict()
         # populate the feeder dictionary
