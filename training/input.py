@@ -203,6 +203,7 @@ class InputManager(object):
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
+        self.mgr_thread.start()
 
     def start(self, sess):
         """
