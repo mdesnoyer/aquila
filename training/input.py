@@ -12,7 +12,7 @@ from Queue import Queue
 from Queue import Empty as QueueEmpty
 
 
-VERBOSE = False  # whether or not the print all the shit you're doing
+VERBOSE = True  # whether or not the print all the shit you're doing
 
 
 def get_enqueue_op(fn_phds, lab_phds, queue):
