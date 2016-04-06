@@ -155,6 +155,8 @@ class InputManager(object):
             for a, b in zip(a, b):
                 for _ in range(self.win_matrix[a, b]):
                     self.idxs.append([a, b])
+        import pdb
+        pdb.set_trace()
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
@@ -164,9 +166,9 @@ class InputManager(object):
         Create & Starts all the threads
         """
         self.threads = [Thread(target=_worker,
-                               args=(self.win_matrix, self.filemap, self.imdir, 
-                                     self.batch_size, self.inq, self.outq, 
-                                     self.fn_phds, self.lab_phds, self.enq_op, 
+                               args=(self.win_matrix, self.filemap, self.imdir,
+                                     self.batch_size, self.inq, self.outq,
+                                     self.fn_phds, self.lab_phds, self.enq_op,
                                      self.single_win_mapping, sess))
                         for _ in range(self.num_threads)]
         self.mgr_thread = Thread(target=self._Mgr)
