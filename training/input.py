@@ -117,6 +117,9 @@ def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
         for sidx in np.arange(0, batch_size, 2):
             try:
                 idx1, idx2 = inq.get(True, 30)
+                if not win_matrix[idx1, idx2]:
+                    print 'GERROR'
+                    return
                 indices[sidx] = idx1
                 indices[sidx + 1] = idx2
             except QueueEmpty:
@@ -127,6 +130,8 @@ def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
             labs[sidx + 1] = 1
             image_labels.append(labs)
             image_labels.append(np.zeros(batch_size).astype(int))
+            import pdb
+            pdb.set_trace()
         image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
         feed_dict = dict()
         # populate the feeder dictionary
@@ -193,18 +198,23 @@ class InputManager(object):
         # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
         # why was i doing this? ^^^
         # self.idxs = zip(a[:16], b[:16])
+        print 'Allocating indices'
         if not single_win_mapping:
             self.idxs = zip(a, b)
         else:
             self.idxs = []
-            for a, b in zip(a, b):
-                for _ in range(self.win_matrix[a, b]):
-                    self.idxs.append([a, b])
+            for a_, b_ in zip(a, b):
+                if not win_matrix[a_, b_]:
+                    print 'GERROR!'
+                    return
+                for _ in range(self.win_matrix[a_, b_]):
+                    self.idxs.append([a_, b_])
         self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
         self.n_examples = 0
         self.should_stop = Event()
         self.mgr_thread = Thread(target=self._Mgr)
         self.mgr_thread.start()
+        print 'Manager thread started'
 
     def start(self, sess):
         """
