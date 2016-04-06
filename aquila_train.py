@@ -261,8 +261,10 @@ def train(inp_mgr, ex_per_epoch):
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
 
-        assert not np.isnan(loss_value), 'Model diverged with loss = NaN on ' \
-                                         'epoch %i' % step
+        if np.isnan(loss_value):
+            checkpoint_path = os.path.join(train_dir, 'model.ckpt')
+            saver.save(sess, checkpoint_path, global_step=step)
+            raise Exception('Model diverged with loss = NaN on epoch %i' % step)
 
         if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
