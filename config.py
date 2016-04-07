@@ -28,7 +28,7 @@ abs_feats = 1024
 restore_logits = False
 
 # restore the pretrained model from this location
-pretrained_model_checkpoint_path = '/data/pretrained/model.ckpt-20000'
+pretrained_model_checkpoint_path = '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
 initial_learning_rate = 0.05
