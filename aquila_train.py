@@ -57,7 +57,7 @@ def _tower_loss(inputs, labels, scope):
     regularization_losses = tf.get_collection(
                                 tf.GraphKeys.REGULARIZATION_LOSSES)
     total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
-    loss_averages = tf.train.ExponentialMovingAverage(0.9, name='avg')
+    loss_averages = tf.train.ExponentialMovingAverage(0.99, name='avg')
     loss_averages_op = loss_averages.apply(losses + [total_loss, accuracy])
     for l in losses + [total_loss]:
         loss_name = re.sub('%s_[0-9]*/' % aquila.TOWER_NAME, '', l.op.name)
