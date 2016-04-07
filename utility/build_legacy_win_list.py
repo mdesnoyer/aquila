@@ -34,13 +34,15 @@ with open('/data/plutonium/filtered_trials.csv', 'r') as f:
                 win_pairs[','.join([ch, i])] += 1
                 win_counts[ch] += 1
                 lose_counts[i] += 1
-        else:
+        elif j[8] == 'RETURN':
             # then items ch lost to items
             lose_counts[ch] += 1
             for i in items:
                 win_pairs[','.join([i, ch])] += 1
                 win_counts[i] += 1
                 lose_counts[ch] += 1
+        else:
+            raise Exception('Unknown trial type!')
 
 with open('/repos/aquila/task_data/win_lists/legacy.csv', 'w') as o:
     for k, v in win_pairs.iteritems():
