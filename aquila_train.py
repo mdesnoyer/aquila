@@ -269,7 +269,7 @@ def train(inp_mgr, ex_per_epoch):
             saver.save(sess, checkpoint_path, global_step=step)
             raise Exception('Model diverged with loss = NaN on epoch %i' % step)
 
-        if step % 1 == 0:
+        if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
             format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '
                           '%.3f sec/batch)')
@@ -281,6 +281,6 @@ def train(inp_mgr, ex_per_epoch):
             summary_writer.add_summary(summary_str, step)
 
         # Save the model checkpoint periodically.
-        if step % 5000 == 0 or (step + 1) == max_steps:
+        if step % 10000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
