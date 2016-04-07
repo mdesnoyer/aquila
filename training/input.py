@@ -90,15 +90,13 @@ def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
         sess.run(enq_op, feed_dict=feed_dict)
 
 
-def _single_win_map_worker(win_matrix, filemap, imdir, batch_size, inq, outq,
+def _single_win_map_worker(filemap, imdir, batch_size, inq, outq,
                            fn_phds, lab_phds, enq_op, sess):
     """
     The target of the worker threads. Manages the actual execution of the
     enqueuing of data. This worker is responsible for working under the
     single_win_mapping == True regime.
 
-    :param win_matrix: A sparse matrix or array X where X[i,j] = number
-    of wins of item i over item j.
     :param filemap: A dictionary that maps indices to image filenames.
     :param imdir: The directory that contains the input images.
     :param batch_size: The size of a batch.
@@ -220,13 +218,125 @@ class InputManager(object):
         """
         if self.single_win_mapping:
             targ = _single_win_map_worker
+            args = (self.filemap, self.imdir, self.batch_size, self.inq, 
+                    self.outq, self.fn_phds, self.lab_phds, self.enq_op, sess)
         else:
             targ = _worker
+            args = (self.win_matrix, self.filemap, self.imdir, self.batch_size,
+                    self.inq, self.outq, self.fn_phds, self.lab_phds, 
+                    self.enq_op, sess)
         self.threads = [Thread(target=targ,
-                               args=(self.win_matrix, self.filemap, self.imdir,
-                                     self.batch_size, self.inq, self.outq,
-                                     self.fn_phds, self.lab_phds, self.enq_op,
-                                     sess))
+                               args=args)
+                        for _ in range(self.num_threads)]
+        for t in self.threads:
+            t.daemon = True
+            t.start()
+
+    def join(self):
+        """
+        Joins all threads
+        """
+        self.mgr_thread.join()
+
+    def should_stop(self):
+        """
+        Indicates whether or not TensorFlow should halt
+        """
+        return self.should_stop.is_set()
+
+    def _Mgr(self):
+        """
+        Manager class method. Should be started as a thread.
+        """
+        for epoch in range(self.num_epochs):
+            np.random.shuffle(self.idxs)
+            if self.debug_dir is not None:
+                fn = os.path.join(self.debug_dir, 'epoch_%i' % epoch)
+                np.save(fn, self.idxs)
+            for idxs_pair in self.idxs:
+                self.inq.put(idxs_pair)
+                self.n_examples += 1
+        print 'Enqueued all, total of %i' % self.n_examples
+        for t in self.threads:
+            t.join()
+        self.should_stop.set()
+
+
+class InputManagerWinList(object):
+    def __init__(self, win_list, filemap,
+                 imdir, tf_out, fn_phds,
+                 lab_phds, enq_op,
+                 batch_size, num_epochs=100,
+                 num_threads=4,
+                 debug_dir=None,
+                 single_win_mapping=False):
+        """
+        Creates an object that manages the input to TensorFlow by managing a
+        set of threads that enqueue batches of images. Handles all shuffling
+        of data.
+
+        NOTES:
+            This spawns num_threads + 1 threads, with the last being the
+            thread that's running the _Mgr classmethod, which manages enqueuing.
+
+        :param win_list: A list of the form [a, b, wins_a_over_b]
+        :param filemap: A dictionary that maps indices to image filenames.
+        :param imdir: The directory that contains the input images.
+        :param tf_out: The FIFO output queue.
+        :param fn_phds: A list of TensorFlow placeholders of len batch_size
+        (type: (tf.string, shape=[]))
+        :param lab_phds: A list of TensorFlow placeholders of len batch_size
+        (type: (tf.int32, shape=[batch_size]))
+        :param enq_op: The TensorFlow enqueue operation.
+        :param batch_size: The size of a batch.
+        :param num_epochs: The number of epochs to run for.
+        :param num_threads: The number of threads to spawn.
+        :param debug_dir: If not None, it will store the ordering in which it
+        stores the ordering of the inputs per epoch so errors may be re-created.
+        :param single_win_mapping: If True, then it will repeatedly enqueue
+        items about which we have more data.
+        :return: An instance of InputManager
+        """
+        self.win_list = win_list
+        self.filemap = filemap
+        self.imdir = imdir
+        self.batch_size = batch_size
+        self.num_epochs = num_epochs
+        self.outq = tf_out
+        self.inq = Queue(maxsize=1024)
+        self.num_threads = num_threads
+        self.fn_phds = fn_phds
+        self.lab_phds = lab_phds
+        self.enq_op = enq_op
+        self.num_threads = num_threads
+        self.debug_dir = debug_dir
+        self.single_win_mapping = single_win_mapping
+        # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
+        # why was i doing this? ^^^
+        # self.idxs = zip(a[:16], b[:16])
+        print 'Allocating indices'
+        if not single_win_mapping:
+            raise Exception('Currently only implemented for single win mapping')
+        else:
+            self.idxs = []
+            for a, b, w in self.win_list:
+                for _ in range(w):
+                    self.idxs.append([a, b])
+        self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
+        self.n_examples = 0
+        self.should_stop = Event()
+        self.mgr_thread = Thread(target=self._Mgr)
+        self.mgr_thread.start()
+        print 'Manager thread started'
+
+    def start(self, sess):
+        """
+        Create & Starts all the threads
+        """
+        targ = _single_win_map_worker
+        args = (self.filemap, self.imdir, self.batch_size, self.inq, 
+                self.outq, self.fn_phds, self.lab_phds, self.enq_op, sess)
+        self.threads = [Thread(target=targ, args=args)
                         for _ in range(self.num_threads)]
         for t in self.threads:
             t.daemon = True
