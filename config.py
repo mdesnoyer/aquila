@@ -28,21 +28,21 @@ abs_feats = 1024
 restore_logits = True
 
 # restore the pretrained model from this location
-pretrained_model_checkpoint_path = '/data/aquila_snaps/model.ckpt-20000'
+pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
 initial_learning_rate = 0.05
 
 # epochs after which learning rate decays
-num_epochs_per_decay = 1.0
+num_epochs_per_decay = 0.25  # within-epoch decay
 
 # the learning rate decay factor
-learning_rate_decay_factor = 0.16
+learning_rate_decay_factor = 0.65
 
 
-BATCH_SIZE = 16
+BATCH_SIZE = 22
 
-NUM_EPOCHS = 50
+NUM_EPOCHS = 5
 
 # Constants dictating the learning rate schedule.
 RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
@@ -50,4 +50,4 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 # regularization strength
-WEIGHT_DECAY = 0.00004
+WEIGHT_DECAY = 0.0000001 # 0.00004
