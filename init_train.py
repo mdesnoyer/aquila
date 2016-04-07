@@ -65,8 +65,6 @@ imgr = InputManagerWinList(win_list, fnmap, IMG_DIR, outQ, fn_phds, lab_phds,
                     debug_dir='/data/training_epoch_sequence',
                     single_win_mapping=True)
 
-sess = tf.InteractiveSession()
-imgr.start(sess)
-# aquila_train.train(imgr, imgr.num_ex_per_epoch)
+aquila_train.train(imgr, imgr.num_ex_per_epoch)
 
 
