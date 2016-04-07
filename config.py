@@ -28,13 +28,13 @@ abs_feats = 1024
 restore_logits = False
 
 # restore the pretrained model from this location
-pretrained_model_checkpoint_path = ''  # '/data/pretrained/model.ckpt-157585'
+pretrained_model_checkpoint_path = '/data/pretrained/model.ckpt-20000'
 
 # the initial learning rate
 initial_learning_rate = 0.05
 
 # epochs after which learning rate decays
-num_epochs_per_decay = 5.0
+num_epochs_per_decay = 1.0
 
 # the learning rate decay factor
 learning_rate_decay_factor = 0.16
