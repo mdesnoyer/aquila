@@ -30,7 +30,8 @@ MOVING_AVERAGE_DECAY = 0.9999
 
 
 def inference(inputs, abs_feats=1024, for_training=True,
-              restore_logits=True, scope=None):
+              restore_logits=True, scope=None,
+              regularization_strength=0.000005):
     """
     Exports an inference op, along with the logits required for loss
     computation.
@@ -53,7 +54,8 @@ def inference(inputs, abs_feats=1024, for_training=True,
         'epsilon': 0.001,
     }
     # Set weight_decay for weights in Conv and FC layers.
-    with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], weight_decay=0.000005):
+    with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], 
+            weight_decay=regularization_strength):
         with slim.arg_scope([slim.ops.conv2d],
                 stddev=0.1,
                 activation=tf.nn.relu,
