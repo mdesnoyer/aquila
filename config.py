@@ -25,7 +25,7 @@ abs_feats = 1024
 # Flags governing the type of training.
 # ---------------------------------------------------------------------------- #
 # Whether or not to restore the logits.
-restore_logits = False
+restore_logits = True
 
 # restore the pretrained model from this location
 pretrained_model_checkpoint_path = '/data/aquila_snaps/model.ckpt-20000'
