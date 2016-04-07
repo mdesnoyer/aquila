@@ -115,9 +115,6 @@ def _single_win_map_worker(filemap, imdir, batch_size, inq, outq,
         for sidx in np.arange(0, batch_size, 2):
             try:
                 idx1, idx2 = inq.get(True, 30)
-                if not win_matrix[idx1, idx2]:
-                    print 'GERROR'
-                    return
                 indices[sidx] = idx1
                 indices[sidx + 1] = idx2
             except QueueEmpty:
@@ -225,8 +222,7 @@ class InputManager(object):
             args = (self.win_matrix, self.filemap, self.imdir, self.batch_size,
                     self.inq, self.outq, self.fn_phds, self.lab_phds, 
                     self.enq_op, sess)
-        self.threads = [Thread(target=targ,
-                               args=args)
+        self.threads = [Thread(target=targ, args=args)
                         for _ in range(self.num_threads)]
         for t in self.threads:
             t.daemon = True
@@ -311,9 +307,6 @@ class InputManagerWinList(object):
         self.num_threads = num_threads
         self.debug_dir = debug_dir
         self.single_win_mapping = single_win_mapping
-        # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
-        # why was i doing this? ^^^
-        # self.idxs = zip(a[:16], b[:16])
         print 'Allocating indices'
         if not single_win_mapping:
             raise Exception('Currently only implemented for single win mapping')
