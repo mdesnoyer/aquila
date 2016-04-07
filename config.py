@@ -50,4 +50,4 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 # regularization strength
-WEIGHT_DECAY = 0.0000001 # 0.00004
+WEIGHT_DECAY = 0.00000001 # 0.00004
