@@ -10,6 +10,7 @@ from __future__ import division
 import re
 import tensorflow as tf
 from net.slim import slim
+from net.slim import losses
 
 
 # If a model is trained using multiple GPUs, prefix all Op names with tower_name
@@ -31,7 +32,8 @@ MOVING_AVERAGE_DECAY = 0.9999
 
 def inference(inputs, abs_feats=1024, for_training=True,
               restore_logits=True, scope=None,
-              regularization_strength=0.000005):
+              regularization_strength=0.,
+              dropout_keep_prob=1.0):
     """
     Exports an inference op, along with the logits required for loss
     computation.
@@ -44,6 +46,10 @@ def inference(inputs, abs_feats=1024, for_training=True,
     scratch, or transfer learning from inception, this should be false as the
     number of abstract features will likely change.
     :param scope: The name of the tower (i.e., GPU) this is being done on.
+    :param regularization_strength: The strength of the regularization,
+    as a multiplier to the regularization loss. If 0, regularization is not
+    performed.
+    :param dropout_keep_prob: (1 - p(dropout)). If 1.0, dropout is not applied.
     :return: Logits, aux logits.
     """
     # Parameters for BatchNorm.
@@ -64,7 +70,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
             with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
                 logits, endpoints = slim.aquila.aquila(
                     inputs,
-                    dropout_keep_prob=0.8,
+                    dropout_keep_prob=dropout_keep_prob,
                     num_abs_features=abs_feats,
                     is_training=for_training,
                     restore_logits=restore_logits,
@@ -92,8 +98,10 @@ def loss(logits, labels):
     :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
     :returns: None.
     """
-    slim.losses.ranknet_loss(logits[0], labels, weight=1.0)
-    slim.losses.ranknet_loss(logits[1], labels, weight=0.4, scope='aux_loss')
+    slim.losses.ranknet_loss(logits[0], labels, weight=1.0,
+                             scope='RankLoss/primary')
+    slim.losses.ranknet_loss(logits[1], labels, weight=0.4,
+                             scope='RankLoss/aux')
 
 
 def accuracy(logits, labels):
@@ -106,7 +114,10 @@ def accuracy(logits, labels):
     :param labels: The labels, a [BATCH_SIZE, BATCH_SIZE] float32 tensor.
     :return: The accuracy op.
     """
-    return slim.losses.accuracy(logits[0], labels, scope='accuracy')
+    return [slim.losses.accuracy(logits[0], labels,
+                                 scope='Accuracy/primary'),
+            slim.losses.accuracy(logits[1], labels,
+                                 scope='Accuracy/aux')]
 
 
 def _activation_summary(x):

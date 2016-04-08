@@ -42,12 +42,13 @@ def _tower_loss(inputs, labels, scope):
     # construct an instance of Aquila
     logits = aquila.inference(inputs, abs_feats, for_training=True,
                               restore_logits=restore_logits, scope=scope,
-                              regularization_strength=WEIGHT_DECAY)
+                              regularization_strength=WEIGHT_DECAY,
+                              dropout_keep_prob=DROPOUT_KEEP_PROB)
     # create the loss graph
     aquila.loss(logits, labels)
 
     # create the accuracy graph
-    accuracy = aquila.accuracy(logits, labels)
+    accuracy, aux_accuracy = aquila.accuracy(logits, labels)
     # accuracy_averages = tf.train.ExponentialMovingAverage(0.9,
     # name='accuracy')
     # accuracy_averages_op = accuracy_averages.apply([accuracy])
@@ -59,13 +60,18 @@ def _tower_loss(inputs, labels, scope):
                                 tf.GraphKeys.REGULARIZATION_LOSSES)
     total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
     loss_averages = tf.train.ExponentialMovingAverage(0.995, name='avg')
-    loss_averages_op = loss_averages.apply(losses + [total_loss, accuracy])
+    loss_averages_op = loss_averages.apply(losses + [total_loss, accuracy,
+                                                     aux_accuracy])
     for l in losses + [total_loss]:
         loss_name = re.sub('%s_[0-9]*/' % aquila.TOWER_NAME, '', l.op.name)
-        tf.scalar_summary(loss_name +' (raw)', l)
-        tf.scalar_summary(loss_name, loss_averages.average(l))
-    tf.scalar_summary('accuracy (raw)', accuracy)
-    tf.scalar_summary('accuracy', loss_averages.average(accuracy))
+        tf.scalar_summary(loss_name + '/raw', l)
+        tf.scalar_summary(loss_name + '/smoothed', loss_averages.average(l))
+    tf.scalar_summary(accuracy.op.name + '/raw', accuracy)
+    tf.scalar_summary(accuracy.op.name + '/smoothed',
+                      loss_averages.average(accuracy))
+    tf.scalar_summary(accuracy.op.name + '/raw', aux_accuracy)
+    tf.scalar_summary(accuracy.op.name + '/smoothed',
+                      loss_averages.average(aux_accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
     return total_loss
