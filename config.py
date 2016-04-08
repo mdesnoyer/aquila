@@ -3,7 +3,7 @@ Configuration for Aquila
 """
 
 # where to write event logs and checkpoints
-train_dir = '/data/aquila_snaps_noreg'
+train_dir = '/data/aquila_snaps_lowreg'
 
 # 'train' or 'validation'
 subset = 'train'
