@@ -58,20 +58,24 @@ def _tower_loss(inputs, labels, scope):
     losses = tf.get_collection(slim.losses.LOSSES_COLLECTION, scope)
     regularization_losses = tf.get_collection(
                                 tf.GraphKeys.REGULARIZATION_LOSSES)
+    total_rank_loss = tf.add_n(losses, name='TotalRankLoss')
+    total_reg_loss = tf.add_n(regularization_losses, name='TotalRegLoss')
     total_loss = tf.add_n(losses + regularization_losses, name='total_loss')
     loss_averages = tf.train.ExponentialMovingAverage(0.995, name='avg')
     loss_averages_op = loss_averages.apply(losses + [total_loss, accuracy,
-                                                     aux_accuracy])
-    for l in losses + [total_loss]:
+                                                     aux_accuracy, total_rank_loss,
+                                                     total_reg_loss])
+    for l in losses + [total_loss, accuracy, aux_accuracy, 
+                       total_rank_loss, total_reg_loss]:
         loss_name = re.sub('%s_[0-9]*/' % aquila.TOWER_NAME, '', l.op.name)
         tf.scalar_summary(loss_name + '/raw', l)
         tf.scalar_summary(loss_name + '/smoothed', loss_averages.average(l))
-    tf.scalar_summary(accuracy.op.name + '/raw', accuracy)
-    tf.scalar_summary(accuracy.op.name + '/smoothed',
-                      loss_averages.average(accuracy))
-    tf.scalar_summary(accuracy.op.name + '/raw', aux_accuracy)
-    tf.scalar_summary(accuracy.op.name + '/smoothed',
-                      loss_averages.average(aux_accuracy))
+    # tf.scalar_summary(accuracy.op.name + '/raw', accuracy)
+    # tf.scalar_summary(accuracy.op.name + '/smoothed',
+    #                   loss_averages.average(accuracy))
+    # tf.scalar_summary(accuracy.op.name + '/raw', aux_accuracy)
+    # tf.scalar_summary(accuracy.op.name + '/smoothed',
+    #                   loss_averages.average(aux_accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
     return total_loss
