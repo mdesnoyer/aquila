@@ -9,8 +9,8 @@ NOTES:
     we're going to be reading an enumeration of all win events in the data.
 """
 
-from training.input import InputManagerWinList
-from training.input import get_enqueue_op
+from aquila.training.input import InputManagerWinList
+from aquila.training.input import get_enqueue_op
 import aquila_train
 import config
 

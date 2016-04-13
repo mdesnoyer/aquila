@@ -32,8 +32,8 @@ from __future__ import print_function
 
 import tensorflow as tf
 
-from net.slim import ops
-from net.slim import scopes
+from aquila.net.slim import ops
+from aquila.net.slim import scopes
 
 
 def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,

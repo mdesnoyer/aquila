@@ -9,8 +9,8 @@ from __future__ import division
 
 import re
 import tensorflow as tf
-from net.slim import slim
-from net.slim import losses
+from aquila.net.slim import slim
+from aquila.net.slim import losses
 
 
 # If a model is trained using multiple GPUs, prefix all Op names with tower_name

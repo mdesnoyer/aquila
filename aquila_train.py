@@ -18,8 +18,8 @@ import time
 import numpy as np
 import tensorflow as tf
 
-from net import aquila_model as aquila
-from net.slim import slim
+from aquila.net import aquila_model as aquila
+from aquila.net.slim import slim
 from config import *
 
 BATCH_SIZE *= num_gpus
