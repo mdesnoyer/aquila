@@ -8,7 +8,7 @@ from glob import glob
 import os
 from aquila.net import aquila_model as aquila
 from aquila.net.slim import slim
-from config import *
+from aquila.config import *
 
 
 IMAGE_DIR = '/data/images/'
@@ -25,4 +25,4 @@ logits, abst_feats = aquila.abst_feats(
 	inputs, abs_feats, for_training=False,
     restore_logits=True, scope=scope,
     regularization_strength=WEIGHT_DECAY,
-    dropout_keep_prob=DROPOUT_KEEP_PROB))
+    dropout_keep_prob=DROPOUT_KEEP_PROB)
