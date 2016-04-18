@@ -9,10 +9,33 @@ import os
 from aquila.net import aquila_model as aquila
 from aquila.net.slim import slim
 from aquila.config import *
+import numpy as np 
 
 
 IMAGE_DIR = '/data/images/'
 AQUILA_SNAP = '/data/aquila_snaps_lowreg/model.ckpt-250000'
+DEST = '/data/bestworst'
+
+class Ranker():
+	def __init__(self, n):
+		'''
+		Will store the top and bottom n given a key and a value.
+		'''
+		self.n = n
+		self.top = [(None, -np.inf) for _ in range(n)]
+		self.bottom = [(None, np.inf) for _ in range(n)]
+		self.min_top = -np.inf
+		self.max_bot = np.inf
+
+	def insert(self, key, value):
+		if value > self.min_top:
+			self.top.append([key, value])
+			self.top = sorted(self.top, key=lambda x: -x[1])[:self.n]
+			self.min_top = self.top[-1][1]
+		if value < self.max_bot:
+			self.bottom.append([key, value])
+			self.bottom = sorted(self.bottom, key=lambda x: -x[1])[1:]
+			self.max_bot = self.bottom[0][1]
 
 
 # fetch all the images
@@ -45,5 +68,36 @@ restorer = tf.train.Saver(variables_to_restore)
 # restore it!
 restorer.restore(sess, AQUILA_SNAP)
 
-_logits, _abst_feats = sess.run([logits, abst_feats], 
-								feed_dict={fn_phd: images[0]})
+# how will we store the best/worst of the images for each 
+# feature?
+bw_logits = Ranker(10)
+abs_bestworst = dict()
+for i in range(abs_feats):
+	abs_bestworst[i] = Ranker(5)
+for im_num, image in enumerate(images):
+	if not im_num % 100:
+		print '%i / %i' % (im_num, len(images))
+	_logits, _abst_feats = sess.run([logits, abst_feats], 
+								feed_dict={fn_phd: image})
+	_abst_feats = _abst_feats.squeeze()
+	bw_logits.insert(image, float(_logits))
+	for i in range(abs_feats):
+		abs_bestworst[i].insert(image, _abst_feats[i])
+
+with open(os.path.join(DEST, 'logits_best'), 'w') as f:
+	for k, v in bw_logits.top:
+		f.write('%s %.4f\n' % (k, v))
+
+with open(os.path.join(DEST, 'logits_worst'), 'w') as f:
+	for k, v in bw_logits.bottom:
+		f.write('%s %.4f\n' % (k, v))
+
+
+for i in range(abs_feats):
+	with open(os.path.join(DEST, 'abst_feat_%i_best' % i), 'w') as f:
+		for k, v in abs_bestworst[i].top:
+			f.write('%s %.4f\n' % (k, v))
+
+	with open(os.path.join(DEST, 'abst_feat_%i_worst' % i), 'w') as f:
+		for k, v in abs_bestworst[i].bottom:
+			f.write('%s %.4f\n' % (k, v))
