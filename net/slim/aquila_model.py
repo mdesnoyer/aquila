@@ -334,7 +334,6 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
                                     scope='logits', restore=restore_logits)
                     # 1
                     end_points['logits'] = logits
-                    end_points['predictions'] = \
-                        tf.nn.softmax(logits, name='predictions')
+                    end_points['abst_feats'] = abstract_feats
             return logits, end_points
 

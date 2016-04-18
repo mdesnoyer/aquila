@@ -85,6 +85,57 @@ def inference(inputs, abs_feats=1024, for_training=True,
     return logits, auxiliary_logits
 
 
+def abst_feats(inputs, abs_feats=1024, for_training=False,
+               restore_logits=True, scope=None,
+               regularization_strength=0.,
+               dropout_keep_prob=1.0):
+    """
+    Performs inference and also returns the abstract features
+
+    :param inputs: An N x 299 x 299 x 3 sized float32 tensor (images)
+    :param abs_feats: The number of abstract features to learn.
+    :param for_training: Boolean, whether or not training is being performed.
+    :param restore_logits: Restore the logits. This should only be done if the 
+    model is being trained on a previous snapshot of Aquila. If training from
+    scratch, or transfer learning from inception, this should be false as the
+    number of abstract features will likely change.
+    :param scope: The name of the tower (i.e., GPU) this is being done on.
+    :param regularization_strength: The strength of the regularization,
+    as a multiplier to the regularization loss. If 0, regularization is not
+    performed.
+    :param dropout_keep_prob: (1 - p(dropout)). If 1.0, dropout is not applied.
+    :return: Logits, aux logits.
+    """
+    # Parameters for BatchNorm.
+    batch_norm_params = {
+        # Decay for the moving averages.
+        'decay': BATCHNORM_MOVING_AVERAGE_DECAY,
+        # epsilon to prevent 0s in variance.
+        'epsilon': 0.001,
+    }
+    # Set weight_decay for weights in Conv and FC layers.
+    with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], 
+            weight_decay=regularization_strength):
+        with slim.arg_scope([slim.ops.conv2d],
+                stddev=0.1,
+                activation=tf.nn.relu,
+                batch_norm_params=batch_norm_params):
+            # Force all Variables to reside on the CPU.
+            with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
+                logits, endpoints = slim.aquila.aquila(
+                    inputs,
+                    dropout_keep_prob=dropout_keep_prob,
+                    num_abs_features=abs_feats,
+                    is_training=for_training,
+                    restore_logits=restore_logits,
+                    scope=scope)
+
+    # Grab the logits associated with the side head. Employed during training.
+    abs_feats = endpoints['abst_feats']
+
+    return logits, abs_feats
+
+
 def loss(logits, labels):
     """
     Adds all losses for the model.

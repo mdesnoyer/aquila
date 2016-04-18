@@ -2,7 +2,7 @@
 Version 2 of Aquila Training.
 
 This borrows more from the Inception training module, since I'm more able to
-comprehend it moreso now.
+comprehend it now.
 """
 
 from __future__ import absolute_import
