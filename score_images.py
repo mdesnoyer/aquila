@@ -4,7 +4,7 @@ training images to see how they scored.
 '''
 
 import sys
-sos.path.insert(0, '/data')
+sys.path.insert(0, '/data')
 import tensorflow as tf 
 from glob import glob
 import os
