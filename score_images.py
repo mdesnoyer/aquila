@@ -70,34 +70,53 @@ restorer.restore(sess, AQUILA_SNAP)
 
 # how will we store the best/worst of the images for each 
 # feature?
+# bw_logits = Ranker(10)
+# abs_bestworst = dict()
+# all_scores = []
+# for i in range(abs_feats):
+# 	abs_bestworst[i] = Ranker(5)
+# for im_num, image in enumerate(images):
+# 	if not im_num % 100:
+# 		print '%i / %i' % (im_num, len(images))
+# 	_logits, _abst_feats = sess.run([logits, abst_feats], 
+# 								feed_dict={fn_phd: image})
+# 	_abst_feats = _abst_feats.squeeze()
+# 	bw_logits.insert(image, float(_logits))
+# 	for i in range(abs_feats):
+# 		abs_bestworst[i].insert(image, _abst_feats[i])
+# 	all_scores.append(_logits)
+
+# with open('/home/ubuntu/all_scores', 'w') as f:
+# 	f.write(str(all_scores))
+
+# with open(os.path.join(DEST, 'logits_best'), 'w') as f:
+# 	for k, v in bw_logits.top:
+# 		f.write('%s %.4f\n' % (k, v))
+
+# with open(os.path.join(DEST, 'logits_worst'), 'w') as f:
+# 	for k, v in bw_logits.bottom:
+# 		f.write('%s %.4f\n' % (k, v))
+
+
+# for i in range(abs_feats):
+# 	with open(os.path.join(DEST, 'abst_feat_%i_best' % i), 'w') as f:
+# 		for k, v in abs_bestworst[i].top:
+# 			f.write('%s %.4f\n' % (k, v))
+
+# 	with open(os.path.join(DEST, 'abst_feat_%i_worst' % i), 'w') as f:
+# 		for k, v in abs_bestworst[i].bottom:
+# 			f.write('%s %.4f\n' % (k, v))
+
 bw_logits = Ranker(10)
 abs_bestworst = dict()
+all_scores = []
 for i in range(abs_feats):
 	abs_bestworst[i] = Ranker(5)
 for im_num, image in enumerate(images):
 	if not im_num % 100:
 		print '%i / %i' % (im_num, len(images))
-	_logits, _abst_feats = sess.run([logits, abst_feats], 
-								feed_dict={fn_phd: image})
-	_abst_feats = _abst_feats.squeeze()
-	bw_logits.insert(image, float(_logits))
-	for i in range(abs_feats):
-		abs_bestworst[i].insert(image, _abst_feats[i])
+	_logits = sess.run([logits], feed_dict={fn_phd: image})
+	all_scores.append(_logits)
 
-with open(os.path.join(DEST, 'logits_best'), 'w') as f:
-	for k, v in bw_logits.top:
-		f.write('%s %.4f\n' % (k, v))
-
-with open(os.path.join(DEST, 'logits_worst'), 'w') as f:
-	for k, v in bw_logits.bottom:
-		f.write('%s %.4f\n' % (k, v))
-
-
-for i in range(abs_feats):
-	with open(os.path.join(DEST, 'abst_feat_%i_best' % i), 'w') as f:
-		for k, v in abs_bestworst[i].top:
-			f.write('%s %.4f\n' % (k, v))
-
-	with open(os.path.join(DEST, 'abst_feat_%i_worst' % i), 'w') as f:
-		for k, v in abs_bestworst[i].bottom:
-			f.write('%s %.4f\n' % (k, v))
+with open('/home/ubuntu/all_scores', 'w') as f:
+	f.write(str(all_scores))
