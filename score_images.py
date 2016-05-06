@@ -116,6 +116,8 @@ for im_num, image in enumerate(images):
 	if not im_num % 100:
 		print '%i / %i' % (im_num, len(images))
 	_logits = sess.run([logits], feed_dict={fn_phd: image})
+	with open('/home/ubuntu/all_scores_text', 'a') as f:
+		f.write(str(_logits) + '\n')
 	all_scores.append(_logits)
 
 with open('/home/ubuntu/all_scores', 'w') as f:
