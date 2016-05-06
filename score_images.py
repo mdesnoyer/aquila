@@ -3,6 +3,8 @@ This will extract the abstract features from all of our
 training images to see how they scored.
 '''
 
+import sys
+sos.path.insert(0, '/data')
 import tensorflow as tf 
 from glob import glob
 import os
