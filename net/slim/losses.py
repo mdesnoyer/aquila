@@ -118,6 +118,35 @@ def ranknet_loss(y, m_, conf=0.999, weight=1.0, scope=None):
         return weight * loss_
 
 
+def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
+    """
+    Implements the ranknet loss with demographic personalization.
+
+    Notes: Each image has N features and there are M demographic 'bins'. Assume
+    that there are B images per batch.
+
+    :param y: The B x D predictions for this image.
+    :param w: The normalized win matrix, of shape B x B x D
+    :param co: The confidence matrix, of shape B x B x D
+    :param weight: The relative weighting of the loss.
+    :param scope: The scope for this operation.
+
+    :return: The TensorFlow loss operation.
+    """
+    with tf.op_scope([y, w, co], scope, 'RankNetLossD'):
+        # compute the score difference
+        Sd_t1 = tf.expand_dims(y, 1)
+        Sd_t2 = tf.expand_dims(y, 0)
+        dS = Sd_t1 - Sd_t2
+        Wd = w + tf.transpose(w, perm=[1, 0, 2])
+        Wd = tf.clip_by_value(Wd, 1, 10**8)
+        Wn = tf.div(w, Wd)  # the win ratios
+        t_1= -tf.mul(co, dS)
+        t_2 = tf.log(1 + tf.exp(dS))
+        loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn))
+        return weight * loss
+
+
 def accuracy(y, m_, scope=None):
     """
     Computes accuracy (fraction of correct predictions).
@@ -138,5 +167,27 @@ def accuracy(y, m_, scope=None):
         y_diff_ = tf.sub(y_m_, tf.transpose(y_m_))
         pos_y_diff = tf.to_float(tf.greater(y_diff_, zeros_))
         num_corr_ = tf.reduce_sum(tf.mul(pos_y_diff, m_))
+        accuracy_ = num_corr_ / tf.reduce_sum(m_)
+        return accuracy_
+
+
+def accuracy_demo(y, w, scope=None):
+    """
+    Computes accuracy (fraction of correct predictions).
+
+    :param y: A tensor of predictions from the network. (float32)
+    :param w: The win matrix, m_[i,j,k] = number of times i has beaten j as
+    decided by demographic group k. (B x B x D)
+    :param scope: The operation scope.
+    :return: The TensorFlow accuracy operation.
+    """
+    with tf.op_scope([y, w], scope, 'AccuracyD'):
+        # compute the score difference
+        Sd_t1 = tf.expand_dims(y, 1)
+        Sd_t2 = tf.expand_dims(y, 0)
+        dS = Sd_t1 - Sd_t2
+        zeros_ = tf.zeros_like(dS, dtype=tf.float32)
+        pos_y_diff = tf.to_float(tf.greater(dS, zeros_))
+        num_corr_ = tf.reduce_sum(tf.mul(pos_y_diff, w))
         accuracy_ = num_corr_ / tf.reduce_sum(m_)
         return accuracy_
