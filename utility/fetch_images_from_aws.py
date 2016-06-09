@@ -73,10 +73,13 @@ tot_fetched = 0
 for source in sources:
     for imid, imurl, obj in source:
         tot += 1
-        if not tot % 1000:
+        if not tot % 100:
             tot_s = locale.format("%d", tot, grouping=True)
             tot_fetched_s = locale.format("%d", tot_fetched, grouping=True)
-            print '%s total, %s fetched' % (tot_s, tot_fetched_s)
+            print '%s total, %s fetched [%s]' % (tot_s, tot_fetched_s, imid)
+        nfn = os.path.join(dst, imid + '.jpg')
+        if os.path.exists(nfn):
+            continue
         if imid in extant_imgs:
             continue
         try:
@@ -89,7 +92,6 @@ for source in sources:
         except:
             print 'Could not convert image to PIL at: %s' % imurl
             continue
-        nfn = os.path.join(dst, imid + '.jpg')
         w, h = im.size
         asp = float(w) / h
         if asp >= (16./9):
