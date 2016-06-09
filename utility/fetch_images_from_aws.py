@@ -73,6 +73,10 @@ tot_fetched = 0
 for source in sources:
     for imid, imurl, obj in source:
         tot += 1
+        if not tot % 1000:
+            tot_s = locale.format("%d", tot, grouping=True)
+            tot_fetched_s = locale.format("%d", tot_fetched, grouping=True)
+            print '%s total, %s fetched' % (tot_s, tot_fetched_s)
         if imid in extant_imgs:
             continue
         try:
@@ -104,8 +108,3 @@ for source in sources:
         fin_im = new_im.resize((max_height, max_height), Image.ANTIALIAS)
         fin_im.save(nfn)
         tot_fetched += 1
-        if not tot % 1000:
-            tot_s = locale.format("%d", tot, grouping=True)
-            tot_fetched_s = locale.format("%d", tot_fetched, grouping=True)
-            print '%s total, %s fetched' % (tot_s, tot_fetched_s)
-        break
