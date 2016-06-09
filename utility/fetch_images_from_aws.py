@@ -9,11 +9,16 @@ import boto3
 import locale
 import cStringIO
 import urllib
+from threading import Thread
+from Queue import Queue
 
 dst = '/data/images/'  # the destination folder
 max_height = 314
 max_width = 558
 new_size = (max_width, max_height)
+nthreads = 16
+inQ = Queue(maxsize=nthreads*2)
+outQ = Queue()
 
 try:
     # for linux
@@ -67,21 +72,12 @@ sources = [_s3sourcer('neon-image-library'),
 extant_imgs = glob(os.path.join(dst, '*.jpg'))
 extant_imgs = set([x.replace(dst, '').replace('.jpg', '') for x in extant_imgs])
 
-tot = 0
-tot_fetched = 0
-
-for source in sources:
-    for imid, imurl, obj in source:
-        tot += 1
-        if not tot % 100:
-            tot_s = locale.format("%d", tot, grouping=True)
-            tot_fetched_s = locale.format("%d", tot_fetched, grouping=True)
-            print '%s total, %s fetched [%s]' % (tot_s, tot_fetched_s, imid)
-        nfn = os.path.join(dst, imid + '.jpg')
-        if os.path.exists(nfn):
-            continue
-        if imid in extant_imgs:
-            continue
+def fetcher(inQ, outQ):
+    while True:
+        item = inQ.get()
+        if item is None:
+            return
+        imurl, nfn = item
         try:
             file = cStringIO.StringIO(urllib.urlopen(imurl).read())
         except IOError:
@@ -109,4 +105,56 @@ for source in sources:
                             (new_size[1]-old_size[1])/2))
         fin_im = new_im.resize((max_height, max_height), Image.ANTIALIAS)
         fin_im.save(nfn)
-        tot_fetched += 1
+        outQ.put(1)
+
+tot = 0
+tot_req = 0
+tot_obt = 0
+threads = []
+for t in range(nthreads):
+    threads.append(Thread(target=fetcher, args=(inQ, outQ)))
+
+print 'Starting threads'
+for t in threads:
+    t.start()
+
+for source in sources:
+    for imid, imurl, obj in source:
+        tot += 1
+        if not tot % 100:
+            tot_s = locale.format("%d", tot, grouping=True)
+            tr_s = locale.format("%d", tot_req, grouping=True)
+            to_s = locale.format("%d", tot_obt, grouping=True)
+            print '%s total, %s requested, %s obtained' % (tot_s, tr_s, to_s)
+        nfn = os.path.join(dst, imid + '.jpg')
+        if os.path.exists(nfn):
+            continue
+        if imid in extant_imgs:
+            continue
+        inQ.put((imurl, nfn))
+        tot_req += 1
+        while True:
+            try:
+                inc = outQ.get_nowait()
+                tot_obt += inc
+            except:
+                break
+
+for i in range(nthreads * 2):
+    inQ.put(None)
+
+print 'Joining threads'
+for i in threads:
+    i.join()
+
+while True:
+    try:
+        inc = outQ.get_nowait()
+        tot_obt += inc
+    except:
+        break
+
+tot_s = locale.format("%d", tot, grouping=True)
+tr_s = locale.format("%d", tot_req, grouping=True)
+to_s = locale.format("%d", tot_obt, grouping=True)
+print '%s total, %s requested, %s obtained' % (tot_s, tr_s, to_s)
