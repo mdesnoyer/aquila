@@ -21,6 +21,8 @@ num_preprocess_threads = 1
 # the number of abstract features to learn
 abs_feats = 1024
 
+DEMOGRAPHIC_GROUPS = 9  # this really shouldn't be hardcoded, but meh.
+
 # ---------------------------------------------------------------------------- #
 # Flags governing the type of training.
 # ---------------------------------------------------------------------------- #
