@@ -121,7 +121,7 @@ for t in threads:
 for source in sources:
     for imid, imurl, obj in source:
         tot += 1
-        if not tot % 100:
+        if not tot % 1000:
             tot_s = locale.format("%d", tot, grouping=True)
             tr_s = locale.format("%d", tot_req, grouping=True)
             to_s = locale.format("%d", tot_obt, grouping=True)
