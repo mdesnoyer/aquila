@@ -8,14 +8,76 @@ import tensorflow as tf
 import os
 from threading import Thread
 from threading import Event
+from threading import Lock
 from Queue import Queue
 from Queue import Empty as QueueEmpty
+import locale
+from collections import defaultdict as ddict
+from config import *
+from PIL import Image
+
+try:
+    # for linux
+    locale.setlocale(locale.LC_ALL, 'en_US.utf8')
+except:
+    # for mac
+    locale.setlocale(locale.LC_ALL, 'en_US')
 
 
 VERBOSE = False  # whether or not the print all the shit you're doing
+EPOCH_AND_BATCH_COUNT = [0, 0]  # [n_epochs, n_batches]
+SHOULD_STOP = Event()
+COUNT_LOCK = Lock()
+
+def get_confidence(im1, im2):
+    """
+    Returns the confidence in the pairing for im1 and im2.
+
+    Args:
+        im1: The first image.
+        im2: The second image.
+
+    Returns: The confidence, as a float between 0 and 1.
+    """
+    return 1.0  # for now, we're going to be completely confident
 
 
-def get_enqueue_op(fn_phds, lab_phds, queue):
+def read_in_data(data_location):
+    """
+    Creates the objects for feeding data.
+
+    Args:
+        data_location: A string pointing to a file.
+
+    Returns:
+        pairs: A dictionary, indexed by `image`, that points to a set of all
+        images that `image` has been compared to. Note that an image will
+        only have a key in `pairs` if it is the lexicographically first image
+        in at least one pair.
+
+        labels: A dictionary, indexed by a sorted tuple of images (`image1`,
+        `image2`). This points to a numpy array of integers, where indices
+        0-8 indicate the number of wins by `image1` over `image2`, binned by
+        demographics, while indices 9-15 indicate the number of times
+        `image2` has beaten `image1`, binned by demographics.
+    """
+    pairs = ddict(lambda: set())
+    labels = dict()
+    with open(data_location, 'r') as f:
+        for n, line in enumerate(f):
+            cur_data = line.strip().split(',')
+            img_a = cur_data[0]
+            img_b = cur_data[1]
+            outcomes = [int(x) for x in cur_data[2:]]
+            pairs[img_a].add(img_b)
+            labels[(img_a, img_b)] = np.array(outcomes).astype(int)
+            if not n % 1000:
+                print 'Total read: %s' % locale.format("%d", n, grouping=True)
+    print 'Total read: %s' % locale.format("%d", n, grouping=True)
+    return pairs, labels
+
+
+def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
     """
     Obtains the TensorFlow batch enqueue operation.
 
@@ -26,343 +88,245 @@ def get_enqueue_op(fn_phds, lab_phds, queue):
     """
     im_tensors = []
     im_labels = []
-    for fn_phd, lab_phd in zip(fn_phds, lab_phds):
+    im_conf = []
+    for image_phd, lab_phd, conf_phd in zip(image_phds, label_phds, conf_phds):
         # read in the raw jpeg
-        raw_im = tf.read_file(fn_phd)
+        raw_im = tf.read_file(image_phd)
         # convert to jpeg
         jpeg_im = tf.image.decode_jpeg(raw_im, channels=3)
         # random crop the image
         cropped_im = tf.random_crop(jpeg_im, [299, 299, 3])
         # random flip left/right
         im_tensor = tf.image.random_flip_left_right(cropped_im)
-        im_tensors.append(tf.to_float(im_tensor))
-        im_labels.append(tf.to_float(lab_phd))
+        im_tensors.append(im_tensor)
+        im_labels.append(lab_phd)
+        im_conf.append(conf_phd)
     packed_ims = tf.pack(im_tensors)
     packed_labels = tf.pack(im_labels)
-    enq_op = queue.enqueue_many([packed_ims, packed_labels])
+    packed_conf = tf.pack(im_conf)
+    enq_op = queue.enqueue_many([packed_ims, packed_labels, packed_conf])
     return enq_op
 
+################################################################################
+################################################################################
+#                       WORKER FUNCTIONS                                       #
+################################################################################
+################################################################################
 
-def _worker(win_matrix, filemap, imdir, batch_size, inq, outq, fn_phds,
-            lab_phds, enq_op, sess):
-    """
-    The target of the worker threads. Manages the actual execution of the
-    enqueuing of data.
+################################################################################
+# BATCH WORKER & HELPERS
+################################################################################
 
-    :param win_matrix: A sparse matrix or array X where X[i,j] = number
-    of wins of item i over item j.
-    :param filemap: A dictionary that maps indices to image filenames.
-    :param imdir: The directory that contains the input images.
-    :param batch_size: The size of a batch.
-    :param inq: An input queue that stores the indicies of datapoints to
-    measure. The input queue consists of tuples of indices (i, j).
-    :param outq: The TensorFlow output queue.
-    :param fn_phds: Filename TensorFlow placeholders.
-    :param lab_phds: Label TensorFlow placeholders.
-    :param enq_op: A tensorflow enqueue operation.
-    :param sess: A TensorFlow session manager.
-    :return: None
+
+def _yield_sets(i, pairs, pending_batches=[]):
     """
-    # get the enqueue operation
-    # iterate until the queue is empty
-    indices = np.zeros(batch_size).astype(int)
+    Given pending batches, and a pair group (i -> pairs), this will construct
+    and sequentially yield appropriate batches. At most two incomplete batches
+    are generated.
+
+    NOTES:
+        WARNING:
+            Modifies pending batches in-place.
+
+    Args:
+        i: The first pair item.
+        pairs: A list of items paired with i
+        pending_batches: Incomplete batches.
+
+    Returns: An iterator over the assembled batches.
+    """
+
+    def get_next_batch():
+        if len(pending_batches):
+            return pending_batches.pop()
+        return set()
+
+    batch = get_next_batch()
+    while pairs:
+        if len(batch) == BATCH_SIZE:
+            yield batch
+            batch = get_next_batch()
+            continue
+        if len(batch | set(pairs) | set((i,))) == BATCH_SIZE - 1:
+            # then it will produce aliasing.
+            batch.add(i)
+            while len(batch) < BATCH_SIZE - 2:
+                batch.add(pairs.pop())
+            yield batch
+            batch = get_next_batch()
+            continue
+        batch.add(i)
+        batch.add(pairs.pop())
+        if len(batch) == BATCH_SIZE:
+            yield batch
+            batch = get_next_batch()
+    if batch:
+        yield batch
+    while pending_batches:
+        yield pending_batches.pop()
+
+
+def batch_gen(pairs):
+    cur_batch = set()
+    pending_batches = []
     while True:
-        for sidx in np.arange(0, batch_size, 2):
-            try:
-                idx1, idx2 = inq.get(True, 30)
-                indices[sidx] = idx1
-                indices[sidx + 1] = idx2
-            except QueueEmpty:
-                if VERBOSE:
-                    print 'Queue is empty, terminating'
-                return
-        image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
-        image_labels = [win_matrix[x, indices].todense().A.squeeze() for x in
-                        indices]
-        feed_dict = dict()
-        # populate the feeder dictionary
-        for fnp, fnd, labp, labd in zip(fn_phds, image_fns, lab_phds,
-                                        image_labels):
-            feed_dict[fnp] = fnd
-            feed_dict[labp] = labd
-        if VERBOSE:
-            print 'Enqueuing', batch_size, 'examples'
-        sess.run(enq_op, feed_dict=feed_dict)
+        np.random.shuffle(pairs)
+        for i in pairs:
+            pair_items = pairs[i]
+            constructed_batches = _yield_sets(i, pair_items, pending_batches)
+            pending_batches = []
+            for batch in constructed_batches:
+                if len(batch) != BATCH_SIZE:
+                    pending_batches.append(batch)
+                else:
+                    yield batch
+        with COUNT_LOCK:
+            EPOCH_AND_BATCH_COUNT[0] += 1
 
 
-def _single_win_map_worker(filemap, imdir, batch_size, inq, outq,
-                           fn_phds, lab_phds, enq_op, sess):
+def gen_labels(batch, labels):
+    '''
+    Generates a label, given a batch and the labels dictionary.
+
+    Args:
+        batch: The current batch, as a set.
+        labels: The labels dictionary.
+
+    Returns: The batch, and a win matrix, of size batch x batch x demographic
+    groups
+    '''
+    win_matrix = np.zeros((BATCH_SIZE, BATCH_SIZE, DEMOGRAPHIC_GROUPS))
+    lb = list(batch)
+    for m, i in enumerate(lb):
+        for n, j in enumerate(lb):
+            if (i, j) in labels:
+                win_matrix[m, n, :] = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
+                win_matrix[n, m, :] = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
+    return lb, win_matrix
+
+
+def bworker(data_location, pyInQ):
     """
-    The target of the worker threads. Manages the actual execution of the
-    enqueuing of data. This worker is responsible for working under the
-    single_win_mapping == True regime.
+    Batch Worker. Designed to work asyncronously, continuously inserts new
+    batches into the queue as tuples of (images, win_matrix), where win_matrix
+    is just a different representation of a subset of the labels.
 
-    :param filemap: A dictionary that maps indices to image filenames.
-    :param imdir: The directory that contains the input images.
-    :param batch_size: The size of a batch.
-    :param inq: An input queue that stores the indicies of datapoints to
-    measure. The input queue consists of tuples of indices (i, j).
-    :param outq: The TensorFlow output queue.
-    :param fn_phds: Filename TensorFlow placeholders.
-    :param lab_phds: Label TensorFlow placeholders.
-    :param enq_op: A tensorflow enqueue operation.
-    :param sess: A TensorFlow session manager.
-    :return: None
+    Args:
+        data_location: The source of the data file.
+        pyInQ: An input queue to store tuples of (image_fns, win_matrix,
+        confidence_matrix)
+
+    Returns: None.
     """
-    indices = np.zeros(batch_size).astype(int)
+    pairs, labels = read_in_data(data_location)
+    bg = batch_gen(pairs)
     while True:
-        image_labels = []
-        for sidx in np.arange(0, batch_size, 2):
-            try:
-                idx1, idx2 = inq.get(True, 30)
-                indices[sidx] = idx1
-                indices[sidx + 1] = idx2
-            except QueueEmpty:
-                if VERBOSE:
-                    print 'Queue is empty, terminating'
+        if SHOULD_STOP.is_set():
+            return
+        next_batch = bg.next()
+        batch, win_matrix = gen_labels(next_batch, labels)
+        # TODO: generate the confidence matrix
+        confidence_matrix = np.ones_like(win_matrix).astype(np.int8)
+        pyInQ.put((batch, win_matrix, confidence_matrix))
+        with COUNT_LOCK:
+            EPOCH_AND_BATCH_COUNT[1] += 1
+
+################################################################################
+# PYTHON QUEUE WORKER & HELPERS
+################################################################################
+
+
+def _prep_image(fn):
+    """
+    Retrieves and preprocesses an image.
+
+    Args:
+        fn: An image filename.
+
+    Returns: The image as a 299x299 RGB image.
+    """
+    try:
+        i = Image.open(fn)
+    except:
+        return None
+    w, h = i.size
+    cx = np.random.randint(0, (w - 299)+1)
+    cy = np.random.randint(0, (h - 299)+1)
+    c = i.crop((cx, cy, cx+299, cy+299))  # produce a random crop
+    # do a random flip
+    if np.random.rand() > 0.5:
+        c.transpose(Image.FLIP_LEFT_RIGHT)
+    return np.array(c)
+
+
+def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
+    """
+    Dequeues batch requests from python's input queue, reads the images,
+    and then bundles them (along with the win matrix) to the output queue.
+
+    Args:
+        pyInQ: Input queue, consisting of tuples of (batch_images, win_matrix)
+        pyOutQ:
+
+    Returns:
+
+    """
+    feed_dict = dict()
+    while True:
+        while True:
+            if SHOULD_STOP.is_set():
                 return
-            labs = np.zeros(batch_size).astype(int)
-            labs[sidx + 1] = 1
-            image_labels.append(labs)
-            image_labels.append(np.zeros(batch_size).astype(int))
-        image_fns = [os.path.join(imdir, filemap[x]) for x in indices]
-        feed_dict = dict()
-        # populate the feeder dictionary
-        for fnp, fnd, labp, labd in zip(fn_phds, image_fns, lab_phds,
-                                        image_labels):
-            feed_dict[fnp] = fnd
-            feed_dict[labp] = labd
+            try:
+                item = pyInQ.get(block=True, timeout=10)
+                break
+            except:
+                pass
+        batch_images, win_matrix, conf_matrix = item
+        for i in range(BATCH_SIZE):
+            feed_dict[image_phds[i]] = batch_images[i]
+            feed_dict[label_phds[i]] = win_matrix[i, :, :].squeeze()
+            feed_dict[conf_phds[i]] = conf_matrix[i, :, :].squeeze()
         if VERBOSE:
-            print 'Enqueuing', batch_size, 'examples'
+            print 'Enqueuing examples'
         sess.run(enq_op, feed_dict=feed_dict)
 
 
 class InputManager(object):
-    def __init__(self, win_matrix, filemap,
-                 imdir, tf_out, fn_phds,
-                 lab_phds, enq_op,
-                 batch_size, num_epochs=100,
-                 num_threads=4,
-                 debug_dir=None,
-                 single_win_mapping=False):
-        """
-        Creates an object that manages the input to TensorFlow by managing a
-        set of threads that enqueue batches of images. Handles all shuffling
-        of data.
-
-        NOTES:
-            This spawns num_threads + 1 threads, with the last being the
-            thread that's running the _Mgr classmethod, which manages enqueuing.
-
-        :param win_matrix: A sparse matrix or array X where X[i,j] = number
-        of wins of item i over item j.
-        :param filemap: A dictionary that maps indices to image filenames.
-        :param imdir: The directory that contains the input images.
-        :param tf_out: The FIFO output queue.
-        :param fn_phds: A list of TensorFlow placeholders of len batch_size
-        (type: (tf.string, shape=[]))
-        :param lab_phds: A list of TensorFlow placeholders of len batch_size
-        (type: (tf.int32, shape=[batch_size]))
-        :param enq_op: The TensorFlow enqueue operation.
-        :param batch_size: The size of a batch.
-        :param num_epochs: The number of epochs to run for.
-        :param num_threads: The number of threads to spawn.
-        :param debug_dir: If not None, it will store the ordering in which it
-        stores the ordering of the inputs per epoch so errors may be re-created.
-        :param single_win_mapping: If True, then it will repeatedly enqueue
-        items about which we have more data.
-        :return: An instance of InputManager
-        """
-        self.win_matrix = win_matrix
-        self.filemap = filemap
-        self.imdir = imdir
-        self.batch_size = batch_size
-        self.num_epochs = num_epochs
-        self.outq = tf_out
-        self.inq = Queue(maxsize=1024)
-        self.num_threads = num_threads
-        self.fn_phds = fn_phds
-        self.lab_phds = lab_phds
-        self.enq_op = enq_op
-        self.num_threads = num_threads
-        self.debug_dir = debug_dir
-        self.single_win_mapping = single_win_mapping
-        a, b = self.win_matrix.nonzero()
-        # self.idxs = filter(lambda x: x[0] < x[1], zip(a, b))
-        # why was i doing this? ^^^
-        # self.idxs = zip(a[:16], b[:16])
-        print 'Allocating indices'
-        if not single_win_mapping:
-            self.idxs = zip(a, b)
-        else:
-            self.idxs = []
-            for a_, b_ in zip(a, b):
-                if not win_matrix[a_, b_]:
-                    print 'GERROR!'
-                    return
-                for _ in range(self.win_matrix[a_, b_]):
-                    self.idxs.append([a_, b_])
-        self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
-        self.n_examples = 0
-        self.should_stop = Event()
-        self.mgr_thread = Thread(target=self._Mgr)
-        self.mgr_thread.start()
-        print 'Manager thread started'
+    def __init__(self, tfOutQ, data_location, image_phds, label_phds, conf_phds,
+                 tf_queue, num_epochs=20, num_qworkers=4):
+        self.out_Q = tfOutQ
+        self.image_phds = image_phds
+        self.label_phds = label_phds
+        self.conf_phds = conf_phds
+        self.epochs = num_epochs
+        self.stopper = SHOULD_STOP
+        self.bworker = None
+        self.qworkers = []
+        self.num_qworkers = num_qworkers
+        self.data_location = data_location
+        self.in_q = Queue()
+        self.enq_op = get_enqueue_op(image_phds, label_phds, conf_phds,
+                                     tf_queue)
 
     def start(self, sess):
-        """
-        Create & Starts all the threads
-        """
-        if self.single_win_mapping:
-            targ = _single_win_map_worker
-            args = (self.filemap, self.imdir, self.batch_size, self.inq, 
-                    self.outq, self.fn_phds, self.lab_phds, self.enq_op, sess)
-        else:
-            targ = _worker
-            args = (self.win_matrix, self.filemap, self.imdir, self.batch_size,
-                    self.inq, self.outq, self.fn_phds, self.lab_phds, 
-                    self.enq_op, sess)
-        self.threads = [Thread(target=targ, args=args)
-                        for _ in range(self.num_threads)]
-        for t in self.threads:
-            t.daemon = True
-            t.start()
-
-    def join(self):
-        """
-        Joins all threads
-        """
-        self.mgr_thread.join()
+        self.bworker = Thread(target=bworker,
+                              args=(self.data_location, self.in_q))
+        self.bworker.start()
+        for t in range(self.num_qworkers):
+            qw = Thread(target=pyqworker(self.in_q, sess, self.enq_op,
+                                         self.image_phds, self.label_phds,
+                                         self.conf_phds))
+            qw.start()
+            self.qworkers.append(qw)
 
     def should_stop(self):
-        """
-        Indicates whether or not TensorFlow should halt
-        """
-        return self.should_stop.is_set()
+        with COUNT_LOCK:
+            if EPOCH_AND_BATCH_COUNT[0] >= self.epochs:
+                self.stopper.set()
+                return True
+        return False
 
-    def _Mgr(self):
-        """
-        Manager class method. Should be started as a thread.
-        """
-        for epoch in range(self.num_epochs):
-            np.random.shuffle(self.idxs)
-            if self.debug_dir is not None:
-                fn = os.path.join(self.debug_dir, 'epoch_%i' % epoch)
-                np.save(fn, self.idxs)
-            for idxs_pair in self.idxs:
-                self.inq.put(idxs_pair)
-                self.n_examples += 1
-        print 'Enqueued all, total of %i' % self.n_examples
-        for t in self.threads:
-            t.join()
-        self.should_stop.set()
-
-
-class InputManagerWinList(object):
-    def __init__(self, win_list, filemap,
-                 imdir, tf_out, fn_phds,
-                 lab_phds, enq_op,
-                 batch_size, num_epochs=100,
-                 num_threads=4,
-                 debug_dir=None,
-                 single_win_mapping=False):
-        """
-        Creates an object that manages the input to TensorFlow by managing a
-        set of threads that enqueue batches of images. Handles all shuffling
-        of data.
-
-        NOTES:
-            This spawns num_threads + 1 threads, with the last being the
-            thread that's running the _Mgr classmethod, which manages enqueuing.
-
-        :param win_list: A list of the form [a, b, wins_a_over_b]
-        :param filemap: A dictionary that maps indices to image filenames.
-        :param imdir: The directory that contains the input images.
-        :param tf_out: The FIFO output queue.
-        :param fn_phds: A list of TensorFlow placeholders of len batch_size
-        (type: (tf.string, shape=[]))
-        :param lab_phds: A list of TensorFlow placeholders of len batch_size
-        (type: (tf.int32, shape=[batch_size]))
-        :param enq_op: The TensorFlow enqueue operation.
-        :param batch_size: The size of a batch.
-        :param num_epochs: The number of epochs to run for.
-        :param num_threads: The number of threads to spawn.
-        :param debug_dir: If not None, it will store the ordering in which it
-        stores the ordering of the inputs per epoch so errors may be re-created.
-        :param single_win_mapping: If True, then it will repeatedly enqueue
-        items about which we have more data.
-        :return: An instance of InputManager
-        """
-        self.win_list = win_list
-        self.filemap = filemap
-        self.imdir = imdir
-        self.batch_size = batch_size
-        self.num_epochs = num_epochs
-        self.outq = tf_out
-        self.inq = Queue(maxsize=1024)
-        self.num_threads = num_threads
-        self.fn_phds = fn_phds
-        self.lab_phds = lab_phds
-        self.enq_op = enq_op
-        self.num_threads = num_threads
-        self.debug_dir = debug_dir
-        self.single_win_mapping = single_win_mapping
-        print 'Allocating indices'
-        if not single_win_mapping:
-            raise Exception('Currently only implemented for single win mapping')
-        else:
-            self.idxs = []
-            for a, b, w in self.win_list:
-                for _ in range(w):
-                    self.idxs.append([a, b])
-        self.num_ex_per_epoch = len(self.idxs) * 2  # each entails 2 examples
-        self.n_examples = 0
-        self.should_stop = Event()
-        self.mgr_thread = Thread(target=self._Mgr)
-        self.mgr_thread.start()
-        print 'Manager thread started'
-
-    def start(self, sess):
-        """
-        Create & Starts all the threads
-        """
-        targ = _single_win_map_worker
-        args = (self.filemap, self.imdir, self.batch_size, self.inq, 
-                self.outq, self.fn_phds, self.lab_phds, self.enq_op, sess)
-        self.threads = [Thread(target=targ, args=args)
-                        for _ in range(self.num_threads)]
-        for t in self.threads:
-            t.daemon = True
-            t.start()
-
-    def join(self):
-        """
-        Joins all threads
-        """
-        self.mgr_thread.join()
-
-    def should_stop(self):
-        """
-        Indicates whether or not TensorFlow should halt
-        """
-        return self.should_stop.is_set()
-
-    def _Mgr(self):
-        """
-        Manager class method. Should be started as a thread.
-        """
-        for epoch in range(self.num_epochs):
-            np.random.shuffle(self.idxs)
-            if self.debug_dir is not None:
-                fn = os.path.join(self.debug_dir, 'epoch_%i' % epoch)
-                np.save(fn, self.idxs)
-            for idxs_pair in self.idxs:
-                self.inq.put(idxs_pair)
-                self.n_examples += 1
-        print 'Enqueued all, total of %i' % self.n_examples
-        for t in self.threads:
-            t.join()
-        self.should_stop.set()
-
-
-
+    def stop(self):
+        self.bworker.join()
+        for qw in self.qworkers:
+            qw.join()
