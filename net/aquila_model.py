@@ -79,7 +79,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
     return logits, auxiliary_logits
 
 
-def loss(logits, labels):
+def loss(logits, labels, conf):
     """
     Adds all losses for the model.
 
@@ -87,8 +87,9 @@ def loss(logits, labels):
     by slim.losses. The losses are accumulated later along with the regularization
     loss.
     """
-    slim.losses.ranknet_loss_demo(logits[0], labels, weight=1.0)
-    slim.losses.ranknet_loss_demo(logits[1], labels, weight=0.4, scope='aux_loss')
+    slim.losses.ranknet_loss_demo(logits[0], labels, conf, weight=1.0)
+    slim.losses.ranknet_loss_demo(logits[1], labels, conf, weight=0.4,
+                                  scope='aux_loss')
 
 
 def accuracy(logits, labels):

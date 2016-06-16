@@ -148,14 +148,15 @@ def train(inp_mgr, ex_per_epoch):
     tower_grads = []
 
     for i in xrange(num_gpus):
-        with tf.device('/gpu:%d' % i):
+        #with tf.device('/gpu:%d' % i):
+        with tf.device('/cpu:0'):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
                 # Calculate the loss for one tower of the ImageNet model. This
                 # function constructs the entire ImageNet model but shares the
                 # variables across all towers.
-                inputs, labels, conf, filenames = inp_mgr.outq.dequeue_many(
+                inputs, labels, conf, filenames = inp_mgr.tf_queue.dequeue_many(
                     split_batch_size)
-                tf.scalar_summary('input_queue_size', inp_mgr.outq.size())
+                tf.scalar_summary('input_queue_size', inp_mgr.tf_queue.size())
 
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
@@ -261,7 +262,8 @@ def train(inp_mgr, ex_per_epoch):
         start_time = time.time()
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
-
+        if inp_mgr.should_stop():
+            break
         if np.isnan(loss_value):
             print('Model is diverging (omg!) dumping data')
             summary_str = sess.run(summary_op)
@@ -269,7 +271,6 @@ def train(inp_mgr, ex_per_epoch):
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
             raise Exception('Model diverged with loss = NaN on epoch %i' % step)
-
         if step % 10 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
             format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '

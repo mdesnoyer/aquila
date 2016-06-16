@@ -101,11 +101,11 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
         im_tensors.append(im_tensor)
         im_labels.append(lab_phd)
         im_conf.append(conf_phd)
-    packed_ims = tf.pack(im_tensors)
-    packed_labels = tf.pack(im_labels)
-    packed_conf = tf.pack(im_conf)
+    packed_ims = tf.to_float(tf.pack(im_tensors))
+    packed_labels = tf.to_float(tf.pack(im_labels))
+    packed_conf = tf.to_float(tf.pack(im_conf))
     packed_fns = tf.pack(image_phds)
-    enq_op = queue.enqueue_many([tf.to_float(packed_ims), packed_labels,
+    enq_op = queue.enqueue_many([packed_ims, packed_labels,
                                  packed_conf, packed_fns])
     return enq_op
 
@@ -249,8 +249,6 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
             except:
                 pass
         batch_images, win_matrix, conf_matrix = item
-        print 'Batch images ', batch_images
-        print 'Batch labels ', win_matrix
         for i in range(BATCH_SIZE):
             feed_dict[image_phds[i]] = batch_images[i]
             feed_dict[label_phds[i]] = win_matrix[i, :, :].squeeze()
@@ -320,11 +318,13 @@ class InputManager(object):
         self.sess = sess
         self.bworker = Thread(target=bworker,
                               args=(self.pairs, self.labels, self.in_q))
+        self.bworker.daemon = True
         self.bworker.start()
         for t in range(self.num_qworkers):
             qw = Thread(target=pyqworker,
                         args=(self.in_q, sess, self.enq_op, self.image_phds,
                               self.label_phds, self.conf_phds))
+            qw.daemon = True
             qw.start()
             self.qworkers.append(qw)
         if VERBOSE:

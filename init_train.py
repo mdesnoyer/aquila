@@ -16,14 +16,14 @@ from config import *
 import tensorflow as tf
 
 
-tf_queue = tf.FIFOQueue(BATCH_SIZE, [tf.float32, tf.uint8, tf.float32,
-                                     tf.string],
+tf_queue = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
+                        [tf.float32, tf.float32, tf.float32, tf.string],
                         shapes=[[299, 299, 3],
                                 [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
                                 [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
                                 []])
 image_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
-label_phds = [tf.placeholder(tf.uint8, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
+label_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
               for _ in range(BATCH_SIZE)]
 conf_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
              for _ in range(BATCH_SIZE)]

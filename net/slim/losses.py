@@ -190,5 +190,5 @@ def accuracy_demo(y, w, scope=None):
         zeros_ = tf.zeros_like(dS, dtype=tf.float32)
         pos_y_diff = tf.to_float(tf.greater(dS, zeros_))
         num_corr_ = tf.reduce_sum(tf.mul(pos_y_diff, w))
-        accuracy_ = num_corr_ / tf.reduce_sum(m_)
+        accuracy_ = num_corr_ / tf.reduce_sum(w)
         return accuracy_
