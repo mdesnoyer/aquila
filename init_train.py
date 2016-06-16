@@ -30,7 +30,8 @@ conf_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
 enqueue_op = get_enqueue_op(image_phds, label_phds, conf_phds, tf_queue)
 
 im = InputManager(image_phds, label_phds, conf_phds, tf_queue,
-                  enqueue_op, num_epochs=NUM_EPOCHS)
+                  enqueue_op, num_epochs=NUM_EPOCHS,
+                  num_qworkers=num_preprocess_threads)
 
 aquila_train.train(im, im.num_ex_per_epoch)
 

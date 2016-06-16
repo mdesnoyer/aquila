@@ -3,8 +3,8 @@ Configuration for Aquila
 """
 
 # where to write event logs and checkpoints
-train_dir = '/data/aquila_snaps'
-
+# train_dir = '/data/aquila_snaps'
+train_dir = '/tmp/aquila_snaps'
 # the list of training data
 TRAIN_DATA = '/tmp/aquila_test_data/combined'
 TRAIN_IMAGES = '/tmp/aquila_test_data/images'
@@ -22,15 +22,15 @@ else:
     DATA_SOURCE = TEST_DATA
     IMAGE_SOURCE = TEST_IMAGES
 
-# how many gpus to use
-num_gpus = 4
-
 # Whether to log device placement.
 log_device_placement = False  # this produces *so much* output!
 
 # the number of preprocessing threads to create -- just 2 is more than
 # sufficient, even for 4 gpus (apparently?)
 num_preprocess_threads = 1
+# how many gpus to use
+num_gpus = 1
+
 
 # the number of abstract features to learn
 abs_feats = 1024
