@@ -1,0 +1,7 @@
+tensorboard --logdir=/data/aquila_v2_snaps --port=8888
+
+python init_train.py
+
+ssh -i ~/.ssh/nick_gpu_instance.pem -f ubuntu@10.0.67.72 -L 8888:personal-server.com:8888 -N
+
+then go to http://0.0.0.0:8888

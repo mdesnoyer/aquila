@@ -148,8 +148,7 @@ def train(inp_mgr, ex_per_epoch):
     tower_grads = []
 
     for i in xrange(num_gpus):
-        #with tf.device('/gpu:%d' % i):
-        with tf.device('/cpu:0'):
+        with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
                 # Calculate the loss for one tower of the ImageNet model. This
                 # function constructs the entire ImageNet model but shares the
