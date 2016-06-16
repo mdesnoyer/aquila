@@ -144,6 +144,7 @@ def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
         t_1= -tf.mul(co, dS)
         t_2 = tf.log(1 + tf.exp(dS))
         loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn))
+        tf.add_to_collection(LOSSES_COLLECTION, loss)
         return weight * loss
 
 

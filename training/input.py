@@ -10,7 +10,6 @@ from threading import Thread
 from threading import Event
 from threading import Lock
 from Queue import Queue
-from Queue import Empty as QueueEmpty
 import locale
 from collections import defaultdict as ddict
 from config import *
@@ -25,9 +24,10 @@ except:
 
 
 VERBOSE = False  # whether or not the print all the shit you're doing
-EPOCH_AND_BATCH_COUNT = [0, 0]  # [n_epochs, n_batches]
+EPOCH_AND_BATCH_COUNT = [0, 0, 0]  # [n_epochs, n_batches, n_comparisons]
 SHOULD_STOP = Event()
 COUNT_LOCK = Lock()
+
 
 def get_confidence(im1, im2):
     """
@@ -104,7 +104,9 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
     packed_ims = tf.pack(im_tensors)
     packed_labels = tf.pack(im_labels)
     packed_conf = tf.pack(im_conf)
-    enq_op = queue.enqueue_many([packed_ims, packed_labels, packed_conf])
+    packed_fns = tf.pack(image_phds)
+    enq_op = queue.enqueue_many([tf.to_float(packed_ims), packed_labels,
+                                 packed_conf, packed_fns])
     return enq_op
 
 ################################################################################
@@ -118,68 +120,31 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
 ################################################################################
 
 
-def _yield_sets(i, pairs, pending_batches=[]):
-    """
-    Given pending batches, and a pair group (i -> pairs), this will construct
-    and sequentially yield appropriate batches. At most two incomplete batches
-    are generated.
-
-    NOTES:
-        WARNING:
-            Modifies pending batches in-place.
-
-    Args:
-        i: The first pair item.
-        pairs: A list of items paired with i
-        pending_batches: Incomplete batches.
-
-    Returns: An iterator over the assembled batches.
-    """
-
-    def get_next_batch():
-        if len(pending_batches):
-            return pending_batches.pop()
-        return set()
-
-    batch = get_next_batch()
-    while pairs:
-        if len(batch) == BATCH_SIZE:
-            yield batch
-            batch = get_next_batch()
-            continue
-        if len(batch | set(pairs) | set((i,))) == BATCH_SIZE - 1:
-            # then it will produce aliasing.
-            batch.add(i)
-            while len(batch) < BATCH_SIZE - 2:
-                batch.add(pairs.pop())
-            yield batch
-            batch = get_next_batch()
-            continue
-        batch.add(i)
-        batch.add(pairs.pop())
-        if len(batch) == BATCH_SIZE:
-            yield batch
-            batch = get_next_batch()
-    if batch:
-        yield batch
-    while pending_batches:
-        yield pending_batches.pop()
-
-
 def batch_gen(pairs):
-    cur_batch = set()
     pending_batches = []
+    pkeys = list(pairs.keys())
     while True:
-        np.random.shuffle(pairs)
-        for i in pairs:
-            pair_items = pairs[i]
-            constructed_batches = _yield_sets(i, pair_items, pending_batches)
-            pending_batches = []
-            for batch in constructed_batches:
-                if len(batch) != BATCH_SIZE:
-                    pending_batches.append(batch)
-                else:
-                    yield batch
+        np.random.shuffle(pkeys)
+        for i in pkeys:
+            pair_items = list(pairs[i])
+            np.random.shuffle(pair_items)
+            for j in pair_items:
+                can_add = False
+                for pb in pending_batches:
+                    to_add = (i not in pb) + (j not in pb)
+                    if len(pb) + to_add == BATCH_SIZE:
+                        can_add = True
+                    elif len(pb) + to_add < BATCH_SIZE - 1:
+                        can_add = True
+                    if can_add:
+                        pb.add(i)
+                        pb.add(j)
+                        if len(pb) == BATCH_SIZE:
+                            pending_batches.remove(pb)
+                            yield pb
+                        break
+                if not can_add:
+                    pending_batches.append(set([i, j]))
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[0] += 1
 
@@ -196,18 +161,18 @@ def gen_labels(batch, labels):
     groups
     '''
     win_matrix = np.zeros((BATCH_SIZE, BATCH_SIZE, DEMOGRAPHIC_GROUPS))
-    lb = list(batch)
-    for m, i in enumerate(lb):
-        for n, j in enumerate(lb):
+    for m, i in enumerate(batch):
+        for n, j in enumerate(batch):
             if (i, j) in labels:
                 win_matrix[m, n, :] = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
                 win_matrix[n, m, :] = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
-    return lb, win_matrix
+    lb = [os.path.join(IMAGE_SOURCE, x) for x in batch]
+    return lb, win_matrix.astype(np.uint8)
 
 
-def bworker(data_location, pyInQ):
+def bworker(pairs, labels, pyInQ):
     """
-    Batch Worker. Designed to work asyncronously, continuously inserts new
+    Batch Worker. Designed to work asynchronously, continuously inserts new
     batches into the queue as tuples of (images, win_matrix), where win_matrix
     is just a different representation of a subset of the labels.
 
@@ -218,18 +183,24 @@ def bworker(data_location, pyInQ):
 
     Returns: None.
     """
-    pairs, labels = read_in_data(data_location)
     bg = batch_gen(pairs)
     while True:
-        if SHOULD_STOP.is_set():
-            return
         next_batch = bg.next()
         batch, win_matrix = gen_labels(next_batch, labels)
         # TODO: generate the confidence matrix
-        confidence_matrix = np.ones_like(win_matrix).astype(np.int8)
-        pyInQ.put((batch, win_matrix, confidence_matrix))
+        confidence_matrix = np.ones_like(win_matrix).astype(float)
+        while True:
+            if SHOULD_STOP.is_set():
+                return
+            try:
+                pyInQ.put((batch, win_matrix, confidence_matrix),
+                          block=True, timeout=10)
+                break
+            except:
+                pass
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[1] += 1
+            EPOCH_AND_BATCH_COUNT[2] += np.sum(win_matrix)
 
 ################################################################################
 # PYTHON QUEUE WORKER & HELPERS
@@ -264,10 +235,6 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
     Dequeues batch requests from python's input queue, reads the images,
     and then bundles them (along with the win matrix) to the output queue.
 
-    Args:
-        pyInQ: Input queue, consisting of tuples of (batch_images, win_matrix)
-        pyOutQ:
-
     Returns:
 
     """
@@ -282,51 +249,105 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
             except:
                 pass
         batch_images, win_matrix, conf_matrix = item
+        print 'Batch images ', batch_images
+        print 'Batch labels ', win_matrix
         for i in range(BATCH_SIZE):
             feed_dict[image_phds[i]] = batch_images[i]
             feed_dict[label_phds[i]] = win_matrix[i, :, :].squeeze()
             feed_dict[conf_phds[i]] = conf_matrix[i, :, :].squeeze()
         if VERBOSE:
             print 'Enqueuing examples'
-        sess.run(enq_op, feed_dict=feed_dict)
+        try:
+            sess.run(enq_op, feed_dict=feed_dict)
+        except:
+            if VERBOSE:
+                print 'Enqueue fail error, returning'
+            return
 
 
 class InputManager(object):
-    def __init__(self, tfOutQ, data_location, image_phds, label_phds, conf_phds,
-                 tf_queue, num_epochs=20, num_qworkers=4):
-        self.out_Q = tfOutQ
+    def __init__(self, image_phds, label_phds, conf_phds, tf_queue,
+                 enqueue_op, num_epochs=20, num_qworkers=4):
+        """
+        The input manager class
+
+        :param image_phds: Image filename placeholders, a list of BATCH_SIZE
+        tensorflow string placeholders
+        :param label_phds: Label placeholders (uint8)
+        :param conf_phds: Confidence placeholders (floats)
+        :param tf_queue: The tensorflow input queue (output queue from Input
+        manager's perspective). Should store:
+            [tf.float, 299 x 299 x 3]                    < the images
+            [tf.uint8, BATCH_SIZE x DEMOGRAPHIC_GROUPS]  < the labels
+            [tf.float, BATCH_SIZE x DEMOGRAPHIC_GROUPS]  < the confidences
+        :param num_epochs: The number of epochs
+        :param num_qworkers: The number of queue workers.
+        :return:
+        """
         self.image_phds = image_phds
         self.label_phds = label_phds
         self.conf_phds = conf_phds
-        self.epochs = num_epochs
+        self._epochs = num_epochs
         self.stopper = SHOULD_STOP
         self.bworker = None
         self.qworkers = []
+        self.EPOCH_AND_BATCH_COUNT = EPOCH_AND_BATCH_COUNT
         self.num_qworkers = num_qworkers
-        self.data_location = data_location
-        self.in_q = Queue()
-        self.enq_op = get_enqueue_op(image_phds, label_phds, conf_phds,
-                                     tf_queue)
+        self.in_q = Queue(maxsize=BATCH_SIZE * num_gpus * 2)
+        self.tf_queue = tf_queue
+        self.enq_op = enqueue_op
+        self.pairs, self.labels = read_in_data(DATA_SOURCE)
+        self.tot_comparisons = reduce(lambda x, y: x + np.sum(y),
+                                      self.labels.values(), 0)
+        self.num_ex_per_epoch = EXAMPLES_PER_EPOCH
+
+    @property
+    def epochs(self):
+        with COUNT_LOCK:
+            return self.EPOCH_AND_BATCH_COUNT[0]
+
+    @property
+    def batches(self):
+        with COUNT_LOCK:
+            return self.EPOCH_AND_BATCH_COUNT[1]
+
+    @property
+    def comparisons(self):
+        with COUNT_LOCK:
+            return self.EPOCH_AND_BATCH_COUNT[2]
 
     def start(self, sess):
+        self.sess = sess
         self.bworker = Thread(target=bworker,
-                              args=(self.data_location, self.in_q))
+                              args=(self.pairs, self.labels, self.in_q))
         self.bworker.start()
         for t in range(self.num_qworkers):
-            qw = Thread(target=pyqworker(self.in_q, sess, self.enq_op,
-                                         self.image_phds, self.label_phds,
-                                         self.conf_phds))
+            qw = Thread(target=pyqworker,
+                        args=(self.in_q, sess, self.enq_op, self.image_phds,
+                              self.label_phds, self.conf_phds))
             qw.start()
             self.qworkers.append(qw)
+        if VERBOSE:
+            print 'Image Manager Started'
 
     def should_stop(self):
         with COUNT_LOCK:
-            if EPOCH_AND_BATCH_COUNT[0] >= self.epochs:
+            if self.EPOCH_AND_BATCH_COUNT[0] >= self._epochs:
                 self.stopper.set()
                 return True
         return False
 
     def stop(self):
-        self.bworker.join()
+        if VERBOSE:
+            print 'Stopping'
+        self.stopper.set()
+        print 'Attempting to stop tensorflow queue'
+        close_op = self.tf_queue.close(cancel_pending_enqueues=True)
+        self.sess.run(close_op)
         for qw in self.qworkers:
             qw.join()
+            if VERBOSE:
+                print 'Stopped a queue worker'
+        self.bworker.join()
+        if VERBOSE:
+            print 'Stopped the batch worker'

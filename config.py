@@ -5,8 +5,22 @@ Configuration for Aquila
 # where to write event logs and checkpoints
 train_dir = '/data/aquila_snaps'
 
+# the list of training data
+TRAIN_DATA = '/tmp/aquila_test_data/combined'
+TRAIN_IMAGES = '/tmp/aquila_test_data/images'
+
+TEST_DATA = None
+TEST_IMAGES = None
+
 # 'train' or 'validation'
 subset = 'train'
+
+if subset == 'train':
+    DATA_SOURCE = TRAIN_DATA
+    IMAGE_SOURCE = TRAIN_IMAGES
+else:
+    DATA_SOURCE = TEST_DATA
+    IMAGE_SOURCE = TEST_IMAGES
 
 # how many gpus to use
 num_gpus = 4
@@ -43,7 +57,8 @@ learning_rate_decay_factor = 0.65
 
 
 BATCH_SIZE = 22
-
+EXAMPLES_PER_EPOCH = 10000000  # this has to be hard coded, since the epochs
+# are variable-length >.<
 NUM_EPOCHS = 5
 
 # Constants dictating the learning rate schedule.

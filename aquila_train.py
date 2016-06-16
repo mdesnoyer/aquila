@@ -25,7 +25,7 @@ from config import *
 BATCH_SIZE *= num_gpus
 
 
-def _tower_loss(inputs, labels, scope):
+def _tower_loss(inputs, labels, conf, scope):
     """
     Calculates the loss for a single tower, which is specified by scope.
 
@@ -34,7 +34,10 @@ def _tower_loss(inputs, labels, scope):
         be dequeueing multiple batches for each tower.
 
     :param inputs: A BATCH_SIZE x 299 x 299 x 3 sized float32 tensor (images)
-    :param labels: A [BATCH_SIZE x BATCH_SIZE] label matrix.
+    :param labels: A [BATCH_SIZE x BATCH_SIZE x DEMOGRAPHIC_GROUPS] label
+    matrix.
+    :param conf: A [BATCH_SIZE x BATCH_SIZE x DEMOGRAPHIC_GROUPS] confidence
+    matrix.
     :param scope: The tower name (i.e., tower_0)
     :returns: The total loss op.
     """
@@ -44,7 +47,7 @@ def _tower_loss(inputs, labels, scope):
                               restore_logits=restore_logits, scope=scope,
                               regularization_strength=WEIGHT_DECAY)
     # create the loss graph
-    aquila.loss(logits, labels)
+    aquila.loss(logits, labels, conf)
 
     # create the accuracy graph
     accuracy = aquila.accuracy(logits, labels)
@@ -150,17 +153,14 @@ def train(inp_mgr, ex_per_epoch):
                 # Calculate the loss for one tower of the ImageNet model. This
                 # function constructs the entire ImageNet model but shares the
                 # variables across all towers.
-                inputs, labels = inp_mgr.outq.dequeue_many(split_batch_size)
+                inputs, labels, conf, filenames = inp_mgr.outq.dequeue_many(
+                    split_batch_size)
                 tf.scalar_summary('input_queue_size', inp_mgr.outq.size())
-                m_4d_ = tf.reshape(labels, [1, split_batch_size,
-                                            split_batch_size, 1])
-                tf.image_summary('win_matrix', m_4d_, max_images=1,
-                                 collections=[tf.GraphKeys.SUMMARIES],
-                                 name=None)
+
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
-                loss = _tower_loss(inputs, labels, scope)
+                loss = _tower_loss(inputs, labels, conf, scope)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()

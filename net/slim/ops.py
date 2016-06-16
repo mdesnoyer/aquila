@@ -136,7 +136,8 @@ def conv2d(inputs,
            is_training=True,
            trainable=True,
            restore=True,
-           scope=None):
+           scope=None,
+           loss=losses.l2_loss):
   """Adds a 2D convolution followed by an optional batch_norm layer.
 
   conv2d creates a variable called 'weights', representing the convolutional
@@ -159,6 +160,7 @@ def conv2d(inputs,
     trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_op_scope.
+    loss: The loss function to use
 
   Returns:
     a tensor representing the output of the operation.
@@ -173,11 +175,11 @@ def conv2d(inputs,
     weights_shape = [kernel_size[0], kernel_size[1],
                      num_filters_in, num_filters_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-    l2_regularizer = lambda t: losses.l2_loss(t, weight_decay)
+    regularizer = lambda t: loss(t, weight_decay)
     weights = variables.variable('weights',
                                  shape=weights_shape,
                                  initializer=weights_initializer,
-                                 regularizer=l2_regularizer,
+                                 regularizer=regularizer,
                                  trainable=trainable,
                                  restore=restore)
     conv = tf.nn.conv2d(inputs, weights, [1, stride, stride, 1],
@@ -211,7 +213,8 @@ def fc(inputs,
        is_training=True,
        trainable=True,
        restore=True,
-       scope=None):
+       scope=None,
+       loss=losses.l2_loss):
   """Adds a fully connected layer followed by an optional batch_norm layer.
 
   FC creates a variable called 'weights', representing the fully connected
@@ -232,6 +235,7 @@ def fc(inputs,
     trainable: whether or not the variables should be trainable or not.
     restore: whether or not the variables should be marked for restore.
     scope: Optional scope for variable_op_scope.
+    loss: The loss function to use
 
   Returns:
      the tensor variable representing the result of the series of operations.
@@ -240,11 +244,11 @@ def fc(inputs,
     num_units_in = inputs.get_shape()[1]
     weights_shape = [num_units_in, num_units_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)
-    l2_regularizer = lambda t: losses.l2_loss(t, weight_decay)
+    regularizer = lambda t: loss(t, weight_decay)
     weights = variables.variable('weights',
                                  shape=weights_shape,
                                  initializer=weights_initializer,
-                                 regularizer=l2_regularizer,
+                                 regularizer=regularizer,
                                  trainable=trainable,
                                  restore=restore)
     if batch_norm_params is not None:
