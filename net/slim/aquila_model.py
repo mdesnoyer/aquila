@@ -29,11 +29,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from config import DEMOGRAPHIC_GROUPS
 
 import tensorflow as tf
 
 from net.slim import ops
 from net.slim import scopes
+from net.slim import losses
 
 
 def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,
@@ -236,8 +238,8 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           aux_logits = ops.flatten(aux_logits)
           aux_logits = ops.fc(aux_logits, num_abs_features, activation=None,
                               stddev=0.001, restore=restore_logits)
-          aux_logits = ops.fc(aux_logits, 1, activation=None, stddev=0.001,
-                              restore=restore_logits)
+          aux_logits = ops.fc(aux_logits, DEMOGRAPHIC_GROUPS, activation=None,
+                              stddev=0.001, restore=restore_logits)
           end_points['aux_logits'] = aux_logits
         # mixed_8: 17 x 17 x 1280.
         with tf.variable_scope('mixed_17x17x1280a'):
@@ -302,10 +304,10 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           abstract_feats = ops.fc(net, num_abs_features, activation=None,
                                   scope='abst_feats', restore=restore_logits)
           # 1024
-          logits = ops.fc(abstract_feats, 1, activation=None, scope='logits',
+          logits = ops.fc(abstract_feats, DEMOGRAPHIC_GROUPS,
+                          activation=None, scope='logits',
                           restore=restore_logits)
-          # 1
+          # (size is DEMOGRAPHIC_GROUPS, i.e., 9)
           end_points['logits'] = logits
-          end_points['predictions'] = tf.nn.softmax(logits, name='predictions')
       return logits, end_points
 
