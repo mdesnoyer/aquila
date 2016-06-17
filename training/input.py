@@ -29,6 +29,9 @@ SHOULD_STOP = Event()
 COUNT_LOCK = Lock()
 
 
+# TODO: Whenever there is an unknown person, we should add fractional wins in
+# to each demographic group in proportion to their known occurrence.
+
 def get_confidence(im1, im2):
     """
     Returns the confidence in the pairing for im1 and im2.
@@ -137,10 +140,11 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
 ################################################################################
 
 
-def batch_gen(pairs):
+def _batch_gen(pairs):
     pending_batches = []
     pkeys = list(pairs.keys())
     attempts = 0  # the number of attempts made on fetching a batch
+    max_pb = 100
     while True:
         np.random.shuffle(pkeys)
         for i in pkeys:
@@ -155,24 +159,100 @@ def batch_gen(pairs):
                               'batches' % (attempts, len(pending_batches))
                     attempts += 1
                     to_add = (i not in pb) + (j not in pb)
-                    if to_add == 0:
-                        continue  # d'oh, this was the issue.
-                    if len(pb) + to_add == BATCH_SIZE:
+                    if len(pb) + to_add > BATCH_SIZE:
+                        continue
+                    pb.add(i)
+                    pb.add(j)
+                    if len(pb) == BATCH_SIZE:
+                        pending_batches.remove(pb)
+                        attempts = 0
                         can_add = True
-                    elif len(pb) + to_add < BATCH_SIZE - 1:
-                        can_add = True
-                    if can_add:
-                        pb.add(i)
-                        pb.add(j)
-                        if len(pb) == BATCH_SIZE:
-                            pending_batches.remove(pb)
-                            attempts = 0
-                            yield pb
-                        break
+                        yield pb
+                    break
                 if not can_add:
-                    pending_batches.append(set([i, j]))
+                    pending_batches.append({i, j})
+                if len(pending_batches) > max_pb:
+                    pb = pending_batches[0]
+                    if len(pb) == (BATCH_SIZE - 1):
+                        _ = pending_batches.pop(0)
+                        pb.add(None)
+                        attempts = 0
+                        yield pb
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[0] += 1
+
+
+def _get_int_sz(targ, a_b_s):
+    """ returns 0 if {a, b} is in the targ, 1 if one already is, 2 if neither
+    are, and float("inf") if they can't fit"""
+    tlen = len(targ)
+    toadd = len(targ & a_b_s)
+    if (toadd + tlen) > BATCH_SIZE:
+        return float("inf")
+    return toadd
+
+
+def _add_pair(pending, a, b):
+    """ adds {a, b} to a set in pending. if a completed set is
+    generated, it returns <completed set> and removes it from pending.
+    if {a, b} cant be added to any set, it creates a new one for them and
+    adds it to pending """
+    a_b_s = {a, b}
+    if not len(pending):
+        pending.append(a_b_s)
+        return
+    dists = [_get_int_sz(x, a_b_s) for x in pending]
+    idx = np.argmin(dists)
+    idxv = dists[idx]
+    ival = float("inf")
+    if idxv == ival:
+        pending.append(a_b_s)
+    else:
+        pending[idx].update(a_b_s)
+        if len(pending[idx]) == BATCH_SIZE:
+            return pending.pop(idx)
+    return None
+
+
+def _get_closest_pending(pending):
+    """ pops a nearly complete pending batch from the pending batch list and
+    adds the null image and returns it. returns none if no nearly complete
+    pending batches exist """
+    for idx in range(len(pending)):
+        if len(pending[idx]) == (BATCH_SIZE - 1):
+            pend = pending.pop(idx)
+            pend.add(None)
+            return pend
+    return None
+
+
+def _laplace_smooth_vec(vec):
+    """ applies laplace smoothing to a given vector """
+    vec = vec.astype(float)
+    to_rem = LAPLACE_SMOOTHING_C * np.sum(vec)
+    vec -= to_rem
+    vec[vec < 0] = 0
+    return vec + (to_rem / vec.size)
+
+
+def batch_gen(pairs):
+    pending_batches = []
+    pkeys = list(pairs.keys())
+    attempts = 0  # the number of attempts made on fetching a batch
+    max_pb = 100
+    while True:
+        np.random.shuffle(pkeys)
+        for i in pkeys:
+            pair_items = list(pairs[i])
+            np.random.shuffle(pair_items)
+            for j in pair_items:
+                pos = _add_pair(pending_batches, i, j)
+                if pos:
+                    yield pos
+                if len(pending_batches) > max_pb:
+                    pos = _get_closest_pending(pending_batches)
+                    if pos:
+                        yield pos
 
 
 def gen_labels(batch, labels):
@@ -190,9 +270,16 @@ def gen_labels(batch, labels):
     for m, i in enumerate(batch):
         for n, j in enumerate(batch):
             if (i, j) in labels:
-                win_matrix[m, n, :] = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
-                win_matrix[n, m, :] = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
-    lb = [os.path.join(IMAGE_SOURCE, x) for x in batch]
+                mn_pre = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
+                nm_pre = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
+                win_matrix[m, n, :] = _laplace_smooth_vec(mn_pre)
+                win_matrix[n, m, :] = _laplace_smooth_vec(nm_pre)
+    lb = []
+    for x in batch:
+        if x is not None:
+            lb.append(os.path.join(IMAGE_SOURCE, x))
+        else:
+            lb.append(NULL_IMAGE)
     return lb, win_matrix.astype(np.uint8)
 
 

@@ -139,11 +139,12 @@ def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
         Sd_t2 = tf.expand_dims(y, 0)
         dS = Sd_t1 - Sd_t2
         Wd = w + tf.transpose(w, perm=[1, 0, 2])
-        Wd = tf.clip_by_value(Wd, 1, 10**8)
+        Wd = tf.clip_by_value(Wd, 1e-8, 1e8)
         Wn = tf.div(w, Wd)  # the win ratios
         t_1= -tf.mul(co, dS)
         t_2 = tf.log(1 + tf.exp(dS))
-        loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn)) / tf.reduce_sum(w)
+        divisor = 2. / w.get_shape().num_elements()
+        loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn)) * divisor
         tf.add_to_collection(LOSSES_COLLECTION, weight * loss)
         return weight * loss
 

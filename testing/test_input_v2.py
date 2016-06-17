@@ -58,8 +58,27 @@ for i in range(len(keys)):
                                                        '%i' %(i, j)
 
 # another problem with batch gen
+from collections import Counter
 from training.input import *
 pairs, labels = read_in_data(DATA_SOURCE)
 bg = batch_gen(pairs)
-next_batch = bg.next()
-batch, wm = gen_labels(next_batch, labels)
+cntr = Counter()
+for i in range(10000):
+    next_batch = bg.next()
+    for j in next_batch:
+        cntr[j] += 1
+z = cntr.values()
+none_freq = sorted(z)[-1]/np.mean(sorted(z)[:-1])
+# we need to plot:
+# - the number of times each image was in a batch vs.
+# - the number of pairs that image has
+pair_cnt = Counter()
+for i in pairs:
+    for j in pairs[i]:
+        pair_cnt[i] += 1
+        pair_cnt[j] += 1
+vals = []
+for i in pair_cnt.keys():
+    vals.append([pair_cnt[i], cntr[i]])
+print 'Null image is %g times more likely' % none_freq
+# batch, wm = gen_labels(next_batch, labels)

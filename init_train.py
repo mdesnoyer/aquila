@@ -9,12 +9,18 @@ NOTES:
     we're going to be reading an enumeration of all win events in the data.
 """
 
+from PIL import Image
+import numpy as np
 from training.input import InputManager
 from training.input import get_enqueue_op
 import aquila_train
 from config import *
 import tensorflow as tf
 
+# first, create a null image
+imarray = np.random.rand(100,100,3) * 255
+im = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
+im.save(NULL_IMAGE)
 
 tf_queue = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
                         [tf.float32, tf.float32, tf.float32, tf.string],

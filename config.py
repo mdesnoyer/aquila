@@ -12,7 +12,7 @@ TRAIN_IMAGES = '/data/images'
 SUBSET_SIZE = 4000  # if not None, will only train on 'SUBSET_SIZE' pairs.
 TEST_DATA = None
 TEST_IMAGES = None
-
+NULL_IMAGE = '/tmp/null.jpg'
 # 'train' or 'validation'
 subset = 'train'
 
@@ -38,6 +38,7 @@ abs_feats = 1024
 
 DEMOGRAPHIC_GROUPS = 9  # this really shouldn't be hardcoded, but meh.
 
+LAPLACE_SMOOTHING_C = 0.05
 # ---------------------------------------------------------------------------- #
 # Flags governing the type of training.
 # ---------------------------------------------------------------------------- #
@@ -48,7 +49,7 @@ restore_logits = True
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
-initial_learning_rate = 0.005  # 0.05
+initial_learning_rate = 0.5  # 0.05
 
 # epochs after which learning rate decays
 num_epochs_per_decay = 1  # 0.5 # within-epoch decay
@@ -56,8 +57,10 @@ num_epochs_per_decay = 1  # 0.5 # within-epoch decay
 # the learning rate decay factor
 learning_rate_decay_factor = 0.999  # 0.65
 
+# NOTE: Batch size should have the same parity as the
+# average pair group.
+BATCH_SIZE = 23
 
-BATCH_SIZE = 22
 # are variable-length >.<
 NUM_EPOCHS = 5000
 
