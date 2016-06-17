@@ -143,7 +143,7 @@ def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
         Wn = tf.div(w, Wd)  # the win ratios
         t_1= -tf.mul(co, dS)
         t_2 = tf.log(1 + tf.exp(dS))
-        loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn))
+        loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn)) / tf.reduce_sum(w)
         tf.add_to_collection(LOSSES_COLLECTION, weight * loss)
         return weight * loss
 
