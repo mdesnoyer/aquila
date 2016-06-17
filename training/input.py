@@ -228,11 +228,7 @@ def _get_closest_pending(pending):
 
 def _laplace_smooth_vec(vec):
     """ applies laplace smoothing to a given vector """
-    vec = vec.astype(float)
-    to_rem = LAPLACE_SMOOTHING_C * np.sum(vec)
-    vec -= to_rem
-    vec[vec < 0] = 0
-    return vec + (to_rem / vec.size)
+    return vec * (1-LAPLACE_SMOOTHING_C) + (np.sum(vec) * LAPLACE_SMOOTHING_C / 4)
 
 
 def batch_gen(pairs):
@@ -280,7 +276,7 @@ def gen_labels(batch, labels):
             lb.append(os.path.join(IMAGE_SOURCE, x))
         else:
             lb.append(NULL_IMAGE)
-    return lb, win_matrix.astype(np.uint8)
+    return lb, win_matrix
 
 
 def bworker(pairs, labels, pyInQ):
