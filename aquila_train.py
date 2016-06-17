@@ -258,6 +258,7 @@ def train(inp_mgr, ex_per_epoch):
     print('%s: Model running for %i iterations' %
           (datetime.now(), max_steps))
     for step in xrange(1, max_steps):
+        print('Step %i' % step)
         start_time = time.time()
         _, loss_value, lr_float = sess.run([train_op, loss, lr])
         duration = time.time() - start_time
