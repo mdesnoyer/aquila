@@ -48,7 +48,7 @@ restore_logits = True
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
-initial_learning_rate = 0.05  # 0.05
+initial_learning_rate = 0.0005  # 0.05
 
 # epochs after which learning rate decays
 num_epochs_per_decay = 1  # 0.5 # within-epoch decay
