@@ -9,7 +9,7 @@ train_dir = '/data/aquila_v2_snaps'
 # TRAIN_IMAGES = '/tmp/aquila_test_data/images'
 TRAIN_DATA = '/data/aquila_v2/combined'
 TRAIN_IMAGES = '/data/images'
-SUBSET_SIZE = 100  # if not None, will only train on 'SUBSET_SIZE' pairs.
+SUBSET_SIZE = 4000  # if not None, will only train on 'SUBSET_SIZE' pairs.
 TEST_DATA = None
 TEST_IMAGES = None
 
@@ -57,7 +57,7 @@ num_epochs_per_decay = 1  # 0.5 # within-epoch decay
 learning_rate_decay_factor = 0.999  # 0.65
 
 
-BATCH_SIZE = 4  # 22
+BATCH_SIZE = 22
 # are variable-length >.<
 NUM_EPOCHS = 5000
 
