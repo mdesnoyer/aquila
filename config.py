@@ -51,10 +51,10 @@ pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 initial_learning_rate = 0.005
 
 # epochs after which learning rate decays
-num_epochs_per_decay = 0.5  # within-epoch decay
+num_epochs_per_decay = 1  # within-epoch decay
 
 # the learning rate decay factor
-learning_rate_decay_factor = 0.65
+learning_rate_decay_factor = 0.999
 
 
 BATCH_SIZE = 4  # 22
