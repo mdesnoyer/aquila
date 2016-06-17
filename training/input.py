@@ -164,6 +164,7 @@ def batch_gen(pairs):
                     pending_batches.append(set([i, j]))
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[0] += 1
+            print 'Finished Epoch %i' % EPOCH_AND_BATCH_COUNT[0]
 
 
 def gen_labels(batch, labels):
