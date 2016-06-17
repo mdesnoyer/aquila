@@ -73,6 +73,9 @@ def read_in_data(data_location):
             labels[(img_a, img_b)] = np.array(outcomes).astype(int)
             if not n % 1000:
                 print 'Total read: %s' % locale.format("%d", n, grouping=True)
+            if SUBSET_SIZE is not None:
+                if SUBSET_SIZE * 5 < n:
+                    break
     print 'Total read: %s' % locale.format("%d", n, grouping=True)
     if SUBSET_SIZE is not None:
         print 'Selecting subset of size %i' % SUBSET_SIZE

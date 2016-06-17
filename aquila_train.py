@@ -259,23 +259,24 @@ def train(inp_mgr, ex_per_epoch):
           (datetime.now(), max_steps))
     for step in xrange(1, max_steps):
         start_time = time.time()
-        _, loss_value = sess.run([train_op, loss])
+        _, loss_value, lr_float = sess.run([train_op, loss, lr])
         duration = time.time() - start_time
         if inp_mgr.should_stop():
             break
         if np.isnan(loss_value):
             print('Model is diverging (omg!) dumping data')
-            summary_str = sess.run(summary_op)
-            summary_writer.add_summary(summary_str, step)
-            checkpoint_path = os.path.join(train_dir, 'model.ckpt')
-            saver.save(sess, checkpoint_path, global_step=step)
-            raise Exception('Model diverged with loss = NaN on epoch %i' % step)
+            # summary_str = sess.run(summary_op)
+            # summary_writer.add_summary(summary_str, step)
+            # checkpoint_path = os.path.join(train_dir, 'model.ckpt')
+            # saver.save(sess, checkpoint_path, global_step=step)
+            raise Exception('Model diverged with loss = NaN on step %i' % step)
         if step % 1 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
             format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '
-                          '%.3f sec/batch)')
+                          '%.3f sec/batch) (lr is %g')
             print(format_str % (datetime.now(), step, loss_value,
-                                                    examples_per_sec, duration))
+                                                    examples_per_sec,
+                                duration, lr_float))
 
         if step % 200 == 0:
             summary_str = sess.run(summary_op)
