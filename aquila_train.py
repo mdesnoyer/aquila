@@ -257,7 +257,7 @@ def train(inp_mgr, ex_per_epoch):
     summary_writer = tf.train.SummaryWriter(train_dir, sess.graph_def)
     print('%s: Model running for %i iterations' %
           (datetime.now(), max_steps))
-    for step in xrange(max_steps):
+    for step in xrange(1, max_steps):
         start_time = time.time()
         _, loss_value = sess.run([train_op, loss])
         duration = time.time() - start_time
