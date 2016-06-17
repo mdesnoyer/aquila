@@ -146,7 +146,8 @@ def train(inp_mgr, ex_per_epoch):
 
     # Calculate the gradients for each model tower.
     tower_grads = []
-
+    tow_loss_ops = []
+    tow_acc_ops = []
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
@@ -161,7 +162,8 @@ def train(inp_mgr, ex_per_epoch):
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
                 loss, accuracy = _tower_loss(inputs, labels, conf, scope)
-
+                tow_loss_ops.append(loss)
+                tow_acc_ops.append(accuracy)
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
 
@@ -181,7 +183,8 @@ def train(inp_mgr, ex_per_epoch):
 
                 # Keep track of the gradients across all towers.
                 tower_grads.append(grads)
-
+    avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
+    avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = _average_gradients(tower_grads)
@@ -259,13 +262,13 @@ def train(inp_mgr, ex_per_epoch):
           (datetime.now(), max_steps))
     for step in xrange(1, max_steps):
         start_time = time.time()
-        _, loss_value, acc_val, lr_float = sess.run([train_op, loss, accuracy,
-                                                     lr])
+        _, avg_loss, avg_acc, lr_float = sess.run([train_op, avg_loss_op,
+                                                   avg_acc_op, lr])
         duration = time.time() - start_time
         if inp_mgr.should_stop():
             print('Input manager is requesting a stop')
             break
-        if np.isnan(loss_value):
+        if np.isnan(avg_loss):
             print('Model is diverging (omg!) dumping data')
             # summary_str = sess.run(summary_op)
             # summary_writer.add_summary(summary_str, step)
@@ -277,7 +280,7 @@ def train(inp_mgr, ex_per_epoch):
             format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f (%.1f '
                           'examples/sec; '
                           '%.3f sec/batch) (lr is %g')
-            print(format_str % (datetime.now(), step, loss_value, acc_val,
+            print(format_str % (datetime.now(), step, avg_loss, avg_acc,
                                 examples_per_sec, duration, lr_float))
 
         if step % 200 == 0:
