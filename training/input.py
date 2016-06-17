@@ -140,6 +140,7 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
 def batch_gen(pairs):
     pending_batches = []
     pkeys = list(pairs.keys())
+    attempts = 0  # the number of attempts made on fetching a batch
     while True:
         np.random.shuffle(pkeys)
         for i in pkeys:
@@ -148,6 +149,11 @@ def batch_gen(pairs):
             for j in pair_items:
                 can_add = False
                 for pb in pending_batches:
+                    if (attempts + 1) % 100 == 0:
+                        print 'Warning! Made %i attempts to generate a batch,' \
+                              ' with %i pending ' \
+                              'batches' % (attempts, len(pending_batches))
+                    attempts += 1
                     to_add = (i not in pb) + (j not in pb)
                     if len(pb) + to_add == BATCH_SIZE:
                         can_add = True
@@ -158,6 +164,7 @@ def batch_gen(pairs):
                         pb.add(j)
                         if len(pb) == BATCH_SIZE:
                             pending_batches.remove(pb)
+                            attempts = 0
                             yield pb
                         break
                 if not can_add:
