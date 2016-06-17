@@ -155,6 +155,8 @@ def batch_gen(pairs):
                               'batches' % (attempts, len(pending_batches))
                     attempts += 1
                     to_add = (i not in pb) + (j not in pb)
+                    if to_add == 0:
+                        continue  # d'oh, this was the issue.
                     if len(pb) + to_add == BATCH_SIZE:
                         can_add = True
                     elif len(pb) + to_add < BATCH_SIZE - 1:
