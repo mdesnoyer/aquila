@@ -262,6 +262,7 @@ def train(inp_mgr, ex_per_epoch):
         _, loss_value, lr_float = sess.run([train_op, loss, lr])
         duration = time.time() - start_time
         if inp_mgr.should_stop():
+            print('Input manager is requesting a stop')
             break
         if np.isnan(loss_value):
             print('Model is diverging (omg!) dumping data')
