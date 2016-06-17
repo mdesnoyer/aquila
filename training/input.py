@@ -74,6 +74,20 @@ def read_in_data(data_location):
             if not n % 1000:
                 print 'Total read: %s' % locale.format("%d", n, grouping=True)
     print 'Total read: %s' % locale.format("%d", n, grouping=True)
+    if SUBSET_SIZE is not None:
+        print 'Selecting subset of size %i' % SUBSET_SIZE
+        lkeys = labels.keys()
+        cidxs = np.random.choice(len(lkeys), SUBSET_SIZE / 2,
+                                replace=False)
+        chosen = []
+        for cidx in cidxs:
+            chosen.append(lkeys[cidx])
+        cpairs = ddict(lambda: set())
+        clabels = dict()
+        for a, b in chosen:
+            clabels[(a, b)] = labels[(img_a, img_b)]
+            cpairs[a].add(b)
+        return cpairs, clabels
     return pairs, labels
 
 
@@ -297,7 +311,7 @@ class InputManager(object):
         self.pairs, self.labels = read_in_data(DATA_SOURCE)
         self.tot_comparisons = reduce(lambda x, y: x + np.sum(y),
                                       self.labels.values(), 0)
-        self.num_ex_per_epoch = EXAMPLES_PER_EPOCH
+        self.num_ex_per_epoch = self.tot_comparisons
 
     @property
     def epochs(self):

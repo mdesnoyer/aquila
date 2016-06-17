@@ -11,8 +11,8 @@ import numpy as np
 from collections import defaultdict as ddict
 from glob import glob
 
-n = 100  # the number of images
-ncomp = 1000  # the number of datapoints
+n = 1000  # the number of images
+ncomp = 10000  # the number of datapoints
 ndemo = DEMOGRAPHIC_GROUPS
 DATA_DIR = '/tmp/aquila_test_data'
 all_ims = glob('/data/aquila_training_images/*')
