@@ -277,11 +277,11 @@ def train(inp_mgr, ex_per_epoch):
             print(format_str % (datetime.now(), step, loss_value,
                                                     examples_per_sec, duration))
 
-        if step % 200 == 0:
+        if (step + 1) % 200 == 0:
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
 
         # Save the model checkpoint periodically.
-        if step % 10000 == 0 or (step + 1) == max_steps:
+        if (step + 1) % 10000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
