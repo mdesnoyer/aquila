@@ -71,7 +71,7 @@ def _tower_loss(inputs, labels, conf, scope):
     tf.scalar_summary('accuracy', loss_averages.average(accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
-    return total_loss
+    return total_loss, accuracy
 
 
 def _average_gradients(tower_grads):
@@ -160,7 +160,7 @@ def train(inp_mgr, ex_per_epoch):
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
-                loss = _tower_loss(inputs, labels, conf, scope)
+                loss, accuracy = _tower_loss(inputs, labels, conf, scope)
 
                 # Reuse variables for the next tower.
                 tf.get_variable_scope().reuse_variables()
@@ -259,7 +259,8 @@ def train(inp_mgr, ex_per_epoch):
           (datetime.now(), max_steps))
     for step in xrange(1, max_steps):
         start_time = time.time()
-        _, loss_value, lr_float = sess.run([train_op, loss, lr])
+        _, loss_value, acc_val, lr_float = sess.run([train_op, loss, accuracy,
+                                                     lr])
         duration = time.time() - start_time
         if inp_mgr.should_stop():
             print('Input manager is requesting a stop')
@@ -273,11 +274,11 @@ def train(inp_mgr, ex_per_epoch):
             raise Exception('Model diverged with loss = NaN on step %i' % step)
         if step % 1 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
-            format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; '
+            format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f (%.1f '
+                          'examples/sec; '
                           '%.3f sec/batch) (lr is %g')
-            print(format_str % (datetime.now(), step, loss_value,
-                                                    examples_per_sec,
-                                duration, lr_float))
+            print(format_str % (datetime.now(), step, loss_value, acc_val,
+                                examples_per_sec, duration, lr_float))
 
         if step % 200 == 0:
             summary_str = sess.run(summary_op)
