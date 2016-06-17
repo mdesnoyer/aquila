@@ -57,7 +57,7 @@ num_epochs_per_decay = 0.5  # within-epoch decay
 learning_rate_decay_factor = 0.65
 
 
-BATCH_SIZE = 22
+BATCH_SIZE = 4  # 22
 # are variable-length >.<
 NUM_EPOCHS = 5000
 
