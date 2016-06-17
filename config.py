@@ -59,7 +59,7 @@ learning_rate_decay_factor = 0.65
 
 BATCH_SIZE = 22
 # are variable-length >.<
-NUM_EPOCHS = 5
+NUM_EPOCHS = 5000
 
 # Constants dictating the learning rate schedule.
 RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
