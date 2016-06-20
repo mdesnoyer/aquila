@@ -4,6 +4,8 @@ import numpy as np
 import tensorflow as tf
 from training.input import InputManager
 from training.input import get_enqueue_op
+from net import aquila_model as aquila
+from net.slim import slim
 
 # gtd = dict()  # the ground truth data
 # with open(TRAIN_DATA, 'r') as f:
@@ -31,3 +33,10 @@ im = InputManager(image_phds, label_phds, conf_phds, tf_queue,
                   enqueue_op, num_epochs=2, num_qworkers=1)
 
 sess = tf.InteractiveSession()
+
+ims, wins, conf, fns = tf_queue.dequeue_many(23)
+labels = aquila.inference(ims, abs_feats, for_training=True,
+                          restore_logits=restore_logits, scope='',
+                          regularization_strength=WEIGHT_DECAY)
+op = [labels, ims, wins, conf, fns]
+
