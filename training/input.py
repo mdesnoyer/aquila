@@ -297,13 +297,12 @@ def bworker(pairs, labels, pyInQ):
             try:
                 pyInQ.put((batch, win_matrix, confidence_matrix),
                           block=True, timeout=10)
-                if VERBOSE:
-                    'Placed batch in batch queue'
                 break
             except:
                 if VERBOSE:
                     'Failed to place batch in batch queue'
-                pass
+        if VERBOSE:
+                'Placed batch in batch queue'
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[1] += 1
             EPOCH_AND_BATCH_COUNT[2] += np.sum(win_matrix)
