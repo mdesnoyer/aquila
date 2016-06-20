@@ -12,7 +12,7 @@ if os.path.exists('/tmp/aquila_test_data/combined'):
 else:
     TRAIN_DATA = '/data/aquila_v2/combined'
     TRAIN_IMAGES = '/data/images'
-SUBSET_SIZE = 1500  # None  # if not None, will only train on 'SUBSET_SIZE'
+SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE'
 # pairs.
 TEST_DATA = None
 TEST_IMAGES = None
@@ -66,7 +66,7 @@ learning_rate_decay_factor = 0.999  # 0.65
 BATCH_SIZE = 23
 
 # are variable-length >.<
-NUM_EPOCHS = 5000
+NUM_EPOCHS = 10
 
 # Constants dictating the learning rate schedule.
 RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
@@ -74,4 +74,4 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 # regularization strength
-WEIGHT_DECAY = 0  # 0.00000001  # this should be very low.
+WEIGHT_DECAY = 0.0000001  # this should be very low.

@@ -291,3 +291,4 @@ def train(inp_mgr, ex_per_epoch):
         if step % 10000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
+    inp_mgr.stop()

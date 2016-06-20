@@ -237,7 +237,7 @@ def batch_gen(pairs):
             uni_ims.add(a)
             uni_ims.add(b)
     num_uni_ims = len(uni_ims)
-    seen_inc = 10
+    seen_inc = 100
     cseen = 0
     while True:
         np.random.shuffle(pkeys)
@@ -247,24 +247,26 @@ def batch_gen(pairs):
             for j in pair_items:
                 pos = _add_pair(pending_batches, i, j)
                 if pos:
+                    uni_ims.difference_update(pos)
+                    cseen += 1
                     if (cseen % seen_inc) == 0:
                         n_seen = num_uni_ims - len(uni_ims)
                         seen_rat = 100. * float(n_seen) / num_uni_ims
-                        print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
+                        nseenstr = locale.format("%d", n_seen, grouping=True)
+                        print '\t%s images seen, %.2fpc of total' % (nseenstr,
+                                                                   seen_rat)
                         cseen = 0
-                    uni_ims.difference_update(pos)
-                    cseen += 1
                     yield pos
                 elif len(pending_batches) > max_pb:
                     pos = _get_closest_pending(pending_batches)
                     if pos:
+                        uni_ims.difference_update(pos)
+                        cseen += 1
                         if (cseen % seen_inc) == 0:
                             n_seen = num_uni_ims - len(uni_ims)
                             seen_rat = 100. * float(n_seen) / num_uni_ims
                             print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
                             cseen = 0
-                        uni_ims.difference_update(pos)
-                        cseen += 1
                         yield pos
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[0] += 1
