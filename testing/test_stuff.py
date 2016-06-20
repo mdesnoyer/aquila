@@ -32,15 +32,15 @@ enqueue_op = get_enqueue_op(image_phds, label_phds, conf_phds, tf_queue)
 im = InputManager(image_phds, label_phds, conf_phds, tf_queue,
                   enqueue_op, num_epochs=2, num_qworkers=1)
 
-# ims, wins, conf, fns = tf_queue.dequeue_many(23)
-# labels = aquila.inference(ims, abs_feats, for_training=True,
-#                           restore_logits=restore_logits, scope='',
-#                           regularization_strength=WEIGHT_DECAY)
-# accuracy = aquila.accuracy(labels, wins)
-# op = [accuracy, labels, ims, wins, conf, fns]
-#
-# init = tf.initialize_all_variables()
-# sess = tf.InteractiveSession()
-# sess.run(init)
-# im.start(sess)
+ims, wins, conf, fns = tf_queue.dequeue_many(23)
+labels = aquila.inference(ims, abs_feats, for_training=True,
+                          restore_logits=restore_logits, scope='',
+                          regularization_strength=WEIGHT_DECAY)[0]
+accuracy = aquila.accuracy(labels, wins)
+op = [accuracy, labels, ims, wins, conf, fns]
+
+init = tf.initialize_all_variables()
+sess = tf.InteractiveSession()
+sess.run(init)
+im.start(sess)
 
