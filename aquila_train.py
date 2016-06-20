@@ -277,9 +277,9 @@ def train(inp_mgr, ex_per_epoch):
             raise Exception('Model diverged with loss = NaN on step %i' % step)
         if step % 1 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
-            format_str = ('%s: step %d, loss = %.2f, accuracy = %.2f (%.1f '
+            format_str = ('%s: step %d, loss = %.4f, accuracy = %.2f (%.1f '
                           'examples/sec; '
-                          '%.3f sec/batch) (lr is %g')
+                          '%.3f sec/batch) (lr is %g)')
             print(format_str % (datetime.now(), step, avg_loss, avg_acc,
                                 examples_per_sec, duration, lr_float))
 
