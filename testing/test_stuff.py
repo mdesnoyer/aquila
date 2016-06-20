@@ -5,14 +5,14 @@ import tensorflow as tf
 from training.input import InputManager
 from training.input import get_enqueue_op
 
-gtd = dict()  # the ground truth data
-with open(TRAIN_DATA, 'r') as f:
-    for line in f:
-        a = line.split(',')[0]
-        b = line.split(',')[1]
-        dat = [int(x) for x in line.split(',')[2:]]
-        gtd[(a, b)] = dat[:DEMOGRAPHIC_GROUPS]
-        gtd[(b, a)] = dat[DEMOGRAPHIC_GROUPS:]
+# gtd = dict()  # the ground truth data
+# with open(TRAIN_DATA, 'r') as f:
+#     for line in f:
+#         a = line.split(',')[0]
+#         b = line.split(',')[1]
+#         dat = [int(x) for x in line.split(',')[2:]]
+#         gtd[(a, b)] = dat[:DEMOGRAPHIC_GROUPS]
+#         gtd[(b, a)] = dat[DEMOGRAPHIC_GROUPS:]
 
 tf_queue = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
                         [tf.float32, tf.float32, tf.float32, tf.string],
