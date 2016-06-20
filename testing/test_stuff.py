@@ -33,11 +33,12 @@ im = InputManager(image_phds, label_phds, conf_phds, tf_queue,
                   enqueue_op, num_epochs=2, num_qworkers=1)
 
 ims, wins, conf, fns = tf_queue.dequeue_many(23)
-labels = aquila.inference(ims, abs_feats, for_training=True,
+logits = aquila.inference(ims, abs_feats, for_training=True,
                           restore_logits=restore_logits, scope='',
-                          regularization_strength=WEIGHT_DECAY)[0]
-accuracy = aquila.accuracy(labels, wins)
-op = [accuracy, labels, ims, wins, conf, fns]
+                          regularization_strength=WEIGHT_DECAY)
+y_hat = logits[0]
+accuracy = aquila.accuracy(logits, wins)
+op = [accuracy, y_hat, ims, wins, conf, fns]
 
 init = tf.initialize_all_variables()
 sess = tf.InteractiveSession()
