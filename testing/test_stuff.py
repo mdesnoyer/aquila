@@ -6,7 +6,7 @@ from training.input import InputManager
 from training.input import get_enqueue_op
 
 gtd = dict()  # the ground truth data
-with open('/tmp/aquila_test_data/combined', 'r') as f:
+with open(TRAIN_DATA, 'r') as f:
     for line in f:
         a = line.split(',')[0]
         b = line.split(',')[1]
