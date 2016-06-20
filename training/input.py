@@ -23,7 +23,7 @@ except:
     locale.setlocale(locale.LC_ALL, 'en_US')
 
 
-VERBOSE = False  # whether or not the print all the shit you're doing
+VERBOSE = True  # whether or not the print all the shit you're doing
 EPOCH_AND_BATCH_COUNT = [0, 0, 0]  # [n_epochs, n_batches, n_comparisons]
 SHOULD_STOP = Event()
 COUNT_LOCK = Lock()
