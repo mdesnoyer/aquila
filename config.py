@@ -5,10 +5,10 @@ Configuration for Aquila
 # where to write event logs and checkpoints
 train_dir = '/data/aquila_v2_snaps'
 # the list of training data
-# TRAIN_DATA = '/tmp/aquila_test_data/combined'
-# TRAIN_IMAGES = '/tmp/aquila_test_data/images'
-TRAIN_DATA = '/data/aquila_v2/combined'
-TRAIN_IMAGES = '/data/images'
+TRAIN_DATA = '/tmp/aquila_test_data/combined'
+TRAIN_IMAGES = '/tmp/aquila_test_data/images'
+# TRAIN_DATA = '/data/aquila_v2/combined'
+# TRAIN_IMAGES = '/data/images'
 SUBSET_SIZE = 1500  # if not None, will only train on 'SUBSET_SIZE' pairs.
 TEST_DATA = None
 TEST_IMAGES = None
