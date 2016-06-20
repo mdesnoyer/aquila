@@ -24,7 +24,7 @@ except:
     locale.setlocale(locale.LC_ALL, 'en_US')
 
 
-VERBOSE = True  # whether or not the print all the shit you're doing
+VERBOSE = False  # whether or not the print all the shit you're doing
 EPOCH_AND_BATCH_COUNT = [0, 0, 0]  # [n_epochs, n_batches, n_comparisons]
 SHOULD_STOP = Event()
 COUNT_LOCK = Lock()
@@ -300,9 +300,9 @@ def bworker(pairs, labels, pyInQ):
                 break
             except:
                 if VERBOSE:
-                    'Failed to place batch in batch queue'
+                    print 'Failed to place batch in batch queue'
         if VERBOSE:
-                'Placed batch in batch queue'
+                print 'Placed batch in batch queue'
         with COUNT_LOCK:
             EPOCH_AND_BATCH_COUNT[1] += 1
             EPOCH_AND_BATCH_COUNT[2] += np.sum(win_matrix)
