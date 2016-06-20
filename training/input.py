@@ -240,12 +240,12 @@ def batch_gen(pairs):
     seen_inc = 100
     cseen = 0
     while True:
-        cseen += 1
         if not cseen % seen_inc:
             n_seen = num_uni_ims - len(uni_ims)
             seen_rat = 100. * float(n_seen) / num_uni_ims
             print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
             cseen = 0
+        cseen += 1
         np.random.shuffle(pkeys)
         for i in pkeys:
             pair_items = list(pairs[i])
