@@ -12,7 +12,7 @@ if os.path.exists('/tmp/aquila_test_data/combined'):
 else:
     TRAIN_DATA = '/data/aquila_v2/combined'
     TRAIN_IMAGES = '/data/images'
-SUBSET_SIZE = 1500  # if not None, will only train on 'SUBSET_SIZE' pairs.
+SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE' pairs.
 TEST_DATA = None
 TEST_IMAGES = None
 NULL_IMAGE = '/tmp/null.jpg'
