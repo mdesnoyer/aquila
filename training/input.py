@@ -358,14 +358,18 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
             feed_dict[image_phds[i]] = batch_images[i]
             feed_dict[label_phds[i]] = win_matrix[i, :, :].squeeze()
             feed_dict[conf_phds[i]] = conf_matrix[i, :, :].squeeze()
-        if VERBOSE:
-            print 'Enqueuing examples'
-        try:
-            sess.run(enq_op, feed_dict=feed_dict)
-        except:
-            if VERBOSE:
-                print 'Enqueue fail error, returning'
-            return
+        while True:
+            try:
+                sess.run(enq_op, feed_dict=feed_dict)
+                if VERBOSE:
+                    print 'Enqueued examples'
+            except:
+                if VERBOSE:
+                    print 'Enqueue fail error'
+                if SHOULD_STOP.is_set():
+                    if VERBOSE:
+                        print 'Should stop is set, returning'
+                        return
 
 
 class InputManager(object):
