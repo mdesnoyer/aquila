@@ -237,7 +237,7 @@ def batch_gen(pairs):
             uni_ims.add(a)
             uni_ims.add(b)
     num_uni_ims = len(uni_ims)
-    seen_inc = 100
+    seen_inc = 10
     cseen = 0
     while True:
         print cseen % seen_inc
