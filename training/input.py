@@ -240,6 +240,7 @@ def batch_gen(pairs):
     seen_inc = 100
     cseen = 0
     while True:
+        print cseen % seen_inc
         if (cseen % seen_inc) == 0:
             n_seen = num_uni_ims - len(uni_ims)
             seen_rat = 100. * float(n_seen) / num_uni_ims
