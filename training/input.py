@@ -232,9 +232,10 @@ def batch_gen(pairs):
     pkeys = list(pairs.keys())
     max_pb = 100
     uni_ims = set()
-    for a, b in pairs:
-        uni_ims.add(a)
-        uni_ims.add(b)
+    for a in pairs:
+        for b in pairs[a]:
+            uni_ims.add(a)
+            uni_ims.add(b)
     num_uni_ims = len(uni_ims)
     seen_inc = 1000
     cseen = 0
