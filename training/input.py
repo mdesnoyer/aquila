@@ -364,9 +364,9 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
                 if VERBOSE:
                     print 'Enqueued examples'
                 break
-            except:
+            except Exception, e:
                 if VERBOSE:
-                    print 'Enqueue fail error'
+                    print 'Enqueue fail error:', e.message
                 if SHOULD_STOP.is_set():
                     if VERBOSE:
                         print 'Should stop is set, returning'
