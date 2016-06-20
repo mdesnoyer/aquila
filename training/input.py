@@ -240,12 +240,6 @@ def batch_gen(pairs):
     seen_inc = 10
     cseen = 0
     while True:
-        print cseen % seen_inc
-        if (cseen % seen_inc) == 0:
-            n_seen = num_uni_ims - len(uni_ims)
-            seen_rat = 100. * float(n_seen) / num_uni_ims
-            print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
-            cseen = 0
         np.random.shuffle(pkeys)
         for i in pkeys:
             pair_items = list(pairs[i])
@@ -253,12 +247,22 @@ def batch_gen(pairs):
             for j in pair_items:
                 pos = _add_pair(pending_batches, i, j)
                 if pos:
+                    if (cseen % seen_inc) == 0:
+                        n_seen = num_uni_ims - len(uni_ims)
+                        seen_rat = 100. * float(n_seen) / num_uni_ims
+                        print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
+                        cseen = 0
                     uni_ims.difference_update(pos)
                     cseen += 1
                     yield pos
                 elif len(pending_batches) > max_pb:
                     pos = _get_closest_pending(pending_batches)
                     if pos:
+                        if (cseen % seen_inc) == 0:
+                            n_seen = num_uni_ims - len(uni_ims)
+                            seen_rat = 100. * float(n_seen) / num_uni_ims
+                            print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
+                            cseen = 0
                         uni_ims.difference_update(pos)
                         cseen += 1
                         yield pos
