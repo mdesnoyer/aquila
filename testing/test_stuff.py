@@ -1,6 +1,5 @@
 from config import *
 from PIL import Image
-import cv2
 import numpy as np
 import tensorflow as tf
 from training.input import InputManager
