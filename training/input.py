@@ -266,6 +266,8 @@ def batch_gen(pairs):
                         uni_ims.difference_update(pos)
                         cseen += 1
                         yield pos
+        with COUNT_LOCK:
+            EPOCH_AND_BATCH_COUNT[0] += 1
 
 
 def gen_labels(batch, labels):
