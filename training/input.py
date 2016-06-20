@@ -363,6 +363,7 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
                 sess.run(enq_op, feed_dict=feed_dict)
                 if VERBOSE:
                     print 'Enqueued examples'
+                break
             except:
                 if VERBOSE:
                     print 'Enqueue fail error'
