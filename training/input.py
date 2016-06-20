@@ -14,6 +14,7 @@ import locale
 from collections import defaultdict as ddict
 from config import *
 from PIL import Image
+from time import sleep
 
 try:
     # for linux
@@ -358,19 +359,28 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
             feed_dict[image_phds[i]] = batch_images[i]
             feed_dict[label_phds[i]] = win_matrix[i, :, :].squeeze()
             feed_dict[conf_phds[i]] = conf_matrix[i, :, :].squeeze()
+        attempts = 0
         while True:
             try:
+                attempts += 1
                 sess.run(enq_op, feed_dict=feed_dict)
+                attempts = 0
                 if VERBOSE:
                     print 'Enqueued examples'
                 break
             except Exception, e:
                 if VERBOSE:
                     print 'Enqueue fail error:', e.message
+                    sleep(10)
                 if SHOULD_STOP.is_set():
                     if VERBOSE:
                         print 'Should stop is set, returning'
                         return
+            if attempts >= 5:
+                print 'Attempt limit has been exceeded. Batch:'
+                for i in batch_images:
+                    print '\t', i
+                break
 
 
 class InputManager(object):
