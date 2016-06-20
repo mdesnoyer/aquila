@@ -2,6 +2,7 @@
 Implements the loss function for training as well as the accuracy function.
 """
 import tensorflow as tf
+from config import *
 
 
 LOSSES_COLLECTION = '_losses'
@@ -118,6 +119,13 @@ def ranknet_loss(y, m_, conf=0.999, weight=1.0, scope=None):
         return weight * loss_
 
 
+def laplace_smooth_tf(M):
+    """ performs laplace smoothing on a matrix """
+    smth_fctr = LAPLACE_SMOOTHING_C / M.get_shape()[-1].value
+    smd_mat = tf.reduce_sum(M, reduction_indices=2, keep_dims=True)
+    return M * (1-LAPLACE_SMOOTHING_C) + smd_mat * smth_fctr
+
+
 def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
     """
     Implements the ranknet loss with demographic personalization.
@@ -141,7 +149,8 @@ def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
         Wd = w + tf.transpose(w, perm=[1, 0, 2])
         Wd = tf.clip_by_value(Wd, 1e-8, 1e8)
         Wn = tf.div(w, Wd)  # the win ratios
-        t_1= -tf.mul(co, dS)
+        Wn = laplace_smooth_tf(Wn)  # smooth the win ratios
+        t_1 = -tf.mul(co, dS)
         t_2 = tf.log(1 + tf.exp(dS))
         divisor = 2. / w.get_shape().num_elements()
         loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn)) * divisor

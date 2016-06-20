@@ -226,15 +226,9 @@ def _get_closest_pending(pending):
     return None
 
 
-def _laplace_smooth_vec(vec):
-    """ applies laplace smoothing to a given vector """
-    return vec * (1-LAPLACE_SMOOTHING_C) + (np.sum(vec) * LAPLACE_SMOOTHING_C / 4)
-
-
 def batch_gen(pairs):
     pending_batches = []
     pkeys = list(pairs.keys())
-    attempts = 0  # the number of attempts made on fetching a batch
     max_pb = 100
     while True:
         np.random.shuffle(pkeys)
@@ -266,10 +260,8 @@ def gen_labels(batch, labels):
     for m, i in enumerate(batch):
         for n, j in enumerate(batch):
             if (i, j) in labels:
-                mn_pre = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
-                nm_pre = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
-                win_matrix[m, n, :] = _laplace_smooth_vec(mn_pre)
-                win_matrix[n, m, :] = _laplace_smooth_vec(nm_pre)
+                win_matrix[m, n, :] = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
+                win_matrix[n, m, :] = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
     lb = []
     for x in batch:
         if x is not None:
