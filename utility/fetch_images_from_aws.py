@@ -12,11 +12,11 @@ import urllib
 from threading import Thread
 from Queue import Queue
 
-dst = '/data/images/'  # the destination folder
+dst = '/data/aquila_training_images/'  # the destination folder
 max_height = 314
 max_width = 558
 new_size = (max_width, max_height)
-nthreads = 16
+nthreads = 32
 inQ = Queue(maxsize=nthreads*2)
 outQ = Queue()
 
@@ -89,21 +89,16 @@ def fetcher(inQ, outQ):
             print 'Could not convert image to PIL at: %s' % imurl
             continue
         w, h = im.size
-        asp = float(w) / h
-        if asp >= (16./9):
-            # then it's too wide. resize width
-            nh = int(max_width / asp)
-            rsz_w, rsz_h = max_width, nh
-        else:
-            # then it's too tall. resize height
-            nw = int(max_height * asp)
-            rsz_w, rsz_h = nw, max_height
-        rimd = im.resize((rsz_w, rsz_h), Image.ANTIALIAS)
-        old_size = rimd.size
-        new_im = Image.new("RGB", new_size)
-        new_im.paste(rimd, ((new_size[0]-old_size[0])/2,
-                            (new_size[1]-old_size[1])/2))
-        fin_im = new_im.resize((max_height, max_height), Image.ANTIALIAS)
+        resize_ratio = min(max_width * 1./w, max_height * 1./h)
+        nw, nh = int(w * resize_ratio), int(h * resize_ratio)
+        rimd = im.resize((nw, nh), Image.ANTIALIAS)
+        # # do not pre-pad
+        # old_size = rimd.size
+        # new_im = Image.new("RGB", new_size)
+        # new_im.paste(rimd, ((new_size[0]-old_size[0])/2,
+        #                     (new_size[1]-old_size[1])/2))
+        # fin_im = new_im.resize((max_height, max_height), Image.ANTIALIAS)
+        fin_im = rimd
         fin_im.save(nfn)
         outQ.put(1)
 
