@@ -43,6 +43,8 @@ for im in unique_ims:
                                                            len(not_avail))
     else:
         not_avail.add(im)
+    if count > 10000:
+        break
 
 mr = mean_vals[0] / count
 mg = mean_vals[1] / count
