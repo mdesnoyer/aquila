@@ -11,12 +11,13 @@ if os.path.exists('/tmp/aquila_test_data/combined'):
     TRAIN_IMAGES = '/tmp/aquila_test_data/images'
 else:
     TRAIN_DATA = '/data/aquila_v2/combined'
-    TRAIN_IMAGES = '/data/images'
+    TRAIN_IMAGES = '/data/aquila_training_images'
 SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE'
 # pairs.
-TEST_DATA = None
-TEST_IMAGES = None
+TEST_DATA = '/data/aquila_v2/combined_testing'
+TEST_IMAGES = TRAIN_IMAGES
 NULL_IMAGE = '/tmp/null.jpg'
+MEAN_CHANNEL_VALS = [[[None, None, None]]]
 # 'train' or 'validation'
 subset = 'train'
 
@@ -40,7 +41,7 @@ num_gpus = 4
 # the number of abstract features to learn
 abs_feats = 1024
 
-DEMOGRAPHIC_GROUPS = 9  # this really shouldn't be hardcoded, but meh.
+DEMOGRAPHIC_GROUPS = 11  # this really shouldn't be hardcoded, but meh.
 
 LAPLACE_SMOOTHING_C = 0.05
 # ---------------------------------------------------------------------------- #
@@ -56,10 +57,10 @@ pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 initial_learning_rate = 0.5  # 0.05
 
 # epochs after which learning rate decays
-num_epochs_per_decay = 1  # 0.5 # within-epoch decay
+num_epochs_per_decay = 0.01  # within-epoch decay
 
 # the learning rate decay factor
-learning_rate_decay_factor = 0.999  # 0.65
+learning_rate_decay_factor = 0.95
 
 # NOTE: Batch size should have the same parity as the
 # average pair group.

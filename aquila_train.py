@@ -67,8 +67,8 @@ def _tower_loss(inputs, labels, conf, scope):
         loss_name = re.sub('%s_[0-9]*/' % aquila.TOWER_NAME, '', l.op.name)
         tf.scalar_summary(loss_name +' (raw)', l)
         tf.scalar_summary(loss_name, loss_averages.average(l))
-    tf.scalar_summary('accuracy (raw)', accuracy)
-    tf.scalar_summary('accuracy', loss_averages.average(accuracy))
+    tf.scalar_summary('accuracy/raw', accuracy)
+    tf.scalar_summary('accuracy/smoothed', loss_averages.average(accuracy))
     with tf.control_dependencies([loss_averages_op]):
         total_loss = tf.identity(total_loss)
     return total_loss, accuracy
@@ -112,11 +112,13 @@ def _average_gradients(tower_grads):
     return average_grads
 
 
-def train(inp_mgr, ex_per_epoch):
+def train(inp_mgr, test_mgr, ex_per_epoch):
     """
     Trains the network for some number of epochs.
 
     :param inp_mgr: An instance of the input manager.
+    :param test_mgr: An instance of the input manager but for testing /
+    validation
     :param num_epochs: The number of epochs to run for.
     :param ex_per_epoch: The number of examples per epoch.
     """
@@ -148,6 +150,18 @@ def train(inp_mgr, ex_per_epoch):
     tower_grads = []
     tow_loss_ops = []
     tow_acc_ops = []
+    test_tow_loss_ops = []
+    test_tow_acc_ops = []
+    for i in xrange(num_gpus):
+        with tf.device('/gpu:%d' % i):
+            with tf.name_scope('%s_%d_val' % (aquila.TOWER_NAME, i)) as scope:
+                vinputs, vlabels, vconf, vfilenames = \
+                    test_mgr.tf_queue.dequeue_many(
+                    split_batch_size)
+                test_loss, test_accuracy = _tower_loss(vinputs, vlabels, vconf,
+                                                       scope)
+                test_tow_loss_ops.append(test_loss)
+                test_tow_acc_ops.append(test_accuracy)
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
@@ -185,6 +199,10 @@ def train(inp_mgr, ex_per_epoch):
                 tower_grads.append(grads)
     avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
+    test_avg_loss_op = tf.reduce_mean(tf.pack(test_tow_loss_ops))
+    test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
+    tf.scalar_summary('validation/loss', test_avg_loss_op)
+    tf.scalar_summary('validation/accuracy', test_avg_acc_op)
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = _average_gradients(tower_grads)
@@ -283,12 +301,15 @@ def train(inp_mgr, ex_per_epoch):
             print(format_str % (datetime.now(), step, avg_loss, avg_acc,
                                 examples_per_sec, duration, lr_float))
 
-        if step % 200 == 0:
+        if step % 100 == 0:
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
+            talo, taao = sess.run([test_avg_loss_op, test_avg_acc_op])
+            print('Test iteration: %.2f acc, %.2f loss' % (taao, talo))
 
         # Save the model checkpoint periodically.
         if step % 10000 == 0 or (step + 1) == max_steps:
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
     inp_mgr.stop()
+    test_mgr.stop()

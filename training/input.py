@@ -15,6 +15,10 @@ from collections import defaultdict as ddict
 from config import *
 from PIL import Image
 from time import sleep
+from tensorflow.python.ops import image_ops
+from tensorflow.python.ops import math_ops
+from tensorflow.python.ops import array_ops
+from tensorflow.python import ops
 
 try:
     # for linux
@@ -28,10 +32,236 @@ VERBOSE = False  # whether or not the print all the shit you're doing
 EPOCH_AND_BATCH_COUNT = [0, 0, 0]  # [n_epochs, n_batches, n_comparisons]
 SHOULD_STOP = Event()
 COUNT_LOCK = Lock()
+# the bin freqs are added to the bins whenever an unkonwn individual appears
+BIN_FREQ = np.array([0.16, 0.10, 0.15, 0.05, 0.03, 0.14, 0.06, 0.15, 0.08,
+                     0.07])
 
 
-# TODO: Whenever there is an unknown person, we should add fractional wins in
-# to each demographic group in proportion to their known occurrence.
+def crop_to_bounding_box(image, offset_height, offset_width, target_height,
+                         target_width, dynamic_shape=False):
+  """Crops an image to a specified bounding box.
+
+  This op cuts a rectangular part out of `image`. The top-left corner of the
+  returned image is at `offset_height, offset_width` in `image`, and its
+  lower-right corner is at
+  `offset_height + target_height, offset_width + target_width`.
+
+  Args:
+    image: 3-D tensor with shape `[height, width, channels]`
+    offset_height: Vertical coordinate of the top-left corner of the result in
+                   the input.
+    offset_width: Horizontal coordinate of the top-left corner of the result in
+                  the input.
+    target_height: Height of the result.
+    target_width: Width of the result.
+    dynamic_shape: Whether the input image has undertermined shape. If set to
+      `True`, shape information will be retrieved at run time. Default to
+      `False`.
+
+  Returns:
+    3-D tensor of image with shape `[target_height, target_width, channels]`
+
+  Raises:
+    ValueError: If the shape of `image` is incompatible with the `offset_*` or
+    `target_*` arguments, and `dynamic_shape` is set to `False`.
+  """
+  image = ops.convert_to_tensor(image, name='image')
+  _Check3DImage(image, require_static=(not dynamic_shape))
+  height, width, _ = _ImageDimensions(image, dynamic_shape=dynamic_shape)
+
+  if not dynamic_shape:
+    if offset_width < 0:
+      raise ValueError('offset_width must be >= 0.')
+    if offset_height < 0:
+      raise ValueError('offset_height must be >= 0.')
+
+    if width < (target_width + offset_width):
+      raise ValueError('width must be >= target + offset.')
+    if height < (target_height + offset_height):
+      raise ValueError('height must be >= target + offset.')
+
+  cropped = array_ops.slice(image,
+                            array_ops.pack([offset_height, offset_width, 0]),
+                            array_ops.pack([target_height, target_width, -1]))
+
+  return cropped
+
+
+def pad_to_bounding_box(image, offset_height, offset_width, target_height,
+                        target_width, dynamic_shape=False):
+  """Pad `image` with zeros to the specified `height` and `width`.
+
+  Adds `offset_height` rows of zeros on top, `offset_width` columns of
+  zeros on the left, and then pads the image on the bottom and right
+  with zeros until it has dimensions `target_height`, `target_width`.
+
+  This op does nothing if `offset_*` is zero and the image already has size
+  `target_height` by `target_width`.
+
+  Args:
+    image: 3-D tensor with shape `[height, width, channels]`
+    offset_height: Number of rows of zeros to add on top.
+    offset_width: Number of columns of zeros to add on the left.
+    target_height: Height of output image.
+    target_width: Width of output image.
+    dynamic_shape: Whether the input image has undertermined shape. If set to
+      `True`, shape information will be retrieved at run time. Default to
+      `False`.
+
+  Returns:
+    3-D tensor of shape `[target_height, target_width, channels]`
+  Raises:
+    ValueError: If the shape of `image` is incompatible with the `offset_*` or
+      `target_*` arguments, and `dynamic_shape` is set to `False`.
+  """
+  image = ops.convert_to_tensor(image, name='image')
+  _Check3DImage(image, require_static=(not dynamic_shape))
+  height, width, depth = _ImageDimensions(image, dynamic_shape=dynamic_shape)
+
+  after_padding_width = target_width - offset_width - width
+  after_padding_height = target_height - offset_height - height
+
+  if not dynamic_shape:
+    if target_width < width:
+      raise ValueError('target_width must be >= width')
+    if target_height < height:
+      raise ValueError('target_height must be >= height')
+
+    if after_padding_width < 0:
+      raise ValueError('target_width not possible given '
+                       'offset_width and image width')
+    if after_padding_height < 0:
+      raise ValueError('target_height not possible given '
+                       'offset_height and image height')
+
+  # Do not pad on the depth dimensions.
+  if (dynamic_shape or offset_width or offset_height or
+      after_padding_width or after_padding_height):
+    paddings = array_ops.reshape(
+      array_ops.pack([offset_height, after_padding_height,
+                      offset_width, after_padding_width,
+                      0, 0]),
+      [3, 2])
+    padded = array_ops.pad(image, paddings)
+    if not dynamic_shape:
+      padded.set_shape([target_height, target_width, depth])
+  else:
+    padded = image
+
+  return padded
+
+def resize_image_with_crop_or_pad(image, target_height, target_width,
+                                  dynamic_shape=False):
+  """Crops and/or pads an image to a target width and height.
+
+  Resizes an image to a target width and height by either centrally
+  cropping the image or padding it evenly with zeros.
+
+  If `width` or `height` is greater than the specified `target_width` or
+  `target_height` respectively, this op centrally crops along that dimension.
+  If `width` or `height` is smaller than the specified `target_width` or
+  `target_height` respectively, this op centrally pads with 0 along that
+  dimension.
+
+  Args:
+    image: 3-D tensor of shape [height, width, channels]
+    target_height: Target height.
+    target_width: Target width.
+    dynamic_shape: Whether the input image has undertermined shape. If set to
+      `True`, shape information will be retrieved at run time. Default to
+      `False`.
+
+  Raises:
+    ValueError: if `target_height` or `target_width` are zero or negative.
+
+  Returns:
+    Cropped and/or padded image of shape
+    `[target_height, target_width, channels]`
+  """
+  image = ops.convert_to_tensor(image, name='image')
+  _Check3DImage(image, require_static=(not dynamic_shape))
+  original_height, original_width, _ =     _ImageDimensions(image, dynamic_shape=dynamic_shape)
+
+  if target_width <= 0:
+    raise ValueError('target_width must be > 0.')
+  if target_height <= 0:
+    raise ValueError('target_height must be > 0.')
+
+  if dynamic_shape:
+    max_ = math_ops.maximum
+    min_ = math_ops.minimum
+  else:
+    max_ = max
+    min_ = min
+
+  width_diff = target_width - original_width
+  offset_crop_width = max_(-width_diff // 2, 0)
+  offset_pad_width = max_(width_diff // 2, 0)
+
+  height_diff = target_height - original_height
+  offset_crop_height = max_(-height_diff // 2, 0)
+  offset_pad_height = max_(height_diff // 2, 0)
+
+  # Maybe crop if needed.
+  cropped = crop_to_bounding_box(image, offset_crop_height, offset_crop_width,
+                                 min_(target_height, original_height),
+                                 min_(target_width, original_width),
+                                 dynamic_shape=dynamic_shape)
+
+  # Maybe pad if needed.
+  resized = pad_to_bounding_box(cropped, offset_pad_height, offset_pad_width,
+                                target_height, target_width,
+                                dynamic_shape=dynamic_shape)
+
+  if resized.get_shape().ndims is None:
+    raise ValueError('resized contains no shape.')
+  if not resized.get_shape()[0].is_compatible_with(target_height):
+    raise ValueError('resized height is not correct.')
+  if not resized.get_shape()[1].is_compatible_with(target_width):
+    raise ValueError('resized width is not correct.')
+  return resized
+
+
+def _ImageDimensions(images, dynamic_shape=False):
+  """Returns the dimensions of an image tensor.
+  Args:
+    images: 4-D Tensor of shape [batch, height, width, channels]
+    dynamic_shape: Whether the input image has undertermined shape. If set to
+      `True`, shape information will be retrieved at run time. Default to
+      `False`.
+
+  Returns:
+    list of integers [batch, height, width, channels]
+  """
+  # A simple abstraction to provide names for each dimension. This abstraction
+  # should make it simpler to switch dimensions in the future (e.g. if we ever
+  # want to switch height and width.)
+  if dynamic_shape:
+    return array_ops.unpack(array_ops.shape(images))
+  else:
+    return images.get_shape().as_list()
+
+def _Check3DImage(image, require_static=True):
+  """Assert that we are working with properly shaped image.
+  Args:
+    image: 3-D Tensor of shape [height, width, channels]
+    require_static: If `True`, requires that all dimensions of `image` are
+      known and non-zero.
+
+  Raises:
+    ValueError: if image.shape is not a [3] vector.
+  """
+  try:
+    image_shape = image.get_shape().with_rank(3)
+  except ValueError:
+    raise ValueError('\'image\' must be three-dimensional.')
+  if require_static and not image_shape.is_fully_defined():
+    raise ValueError('\'image\' must be fully defined.')
+  if any(x == 0 for x in image_shape):
+    raise ValueError('all dims of \'image.shape\' must be > 0: %s' %
+                     image_shape)
+
+image_ops.resize_image_with_crop_or_pad = resize_image_with_crop_or_pad
 
 def get_confidence(im1, im2):
     """
@@ -85,7 +315,7 @@ def read_in_data(data_location):
         print 'Selecting subset of size %i' % SUBSET_SIZE
         lkeys = labels.keys()
         cidxs = np.random.choice(len(lkeys), SUBSET_SIZE / 2,
-                                replace=False)
+                                 replace=False)
         chosen = []
         for cidx in cidxs:
             chosen.append(lkeys[cidx])
@@ -110,13 +340,26 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
     im_tensors = []
     im_labels = []
     im_conf = []
+    # process the mean channel values to integers so that we can still pass
+    # messages as integers
+    mcv = np.array(MEAN_CHANNEL_VALS).round().astype(float)
+    channel_mean_tensor = tf.constant(mcv)
+
     for image_phd, lab_phd, conf_phd in zip(image_phds, label_phds, conf_phds):
         # read in the raw jpeg
         raw_im = tf.read_file(image_phd)
         # convert to jpeg
         jpeg_im = tf.image.decode_jpeg(raw_im, channels=3)
+        img = tf.to_float(jpeg_im) - channel_mean_tensor
+        img /= 256.
+        # pad to appropriate size
+        img = tf.image.resize_image_with_crop_or_pad(img, 314, 558)
+        # resize to 314 x 314
+        img = tf.expand_dims(img, 0)
+        img = tf.image.resize_bilinear(img, (314, 314))
+        img = tf.squeeze(img, [0])
         # random crop the image
-        cropped_im = tf.random_crop(jpeg_im, [299, 299, 3])
+        cropped_im = tf.random_crop(img, [299, 299, 3])
         # random flip left/right
         im_tensor = tf.image.random_flip_left_right(cropped_im)
         im_tensors.append(im_tensor)
@@ -141,7 +384,7 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
 ################################################################################
 
 
-def _batch_gen(pairs):
+def _batch_gen(pairs, training=True):
     pending_batches = []
     pkeys = list(pairs.keys())
     attempts = 0  # the number of attempts made on fetching a batch
@@ -179,8 +422,9 @@ def _batch_gen(pairs):
                         pb.add(None)
                         attempts = 0
                         yield pb
-        with COUNT_LOCK:
-            EPOCH_AND_BATCH_COUNT[0] += 1
+        if training:
+            with COUNT_LOCK:
+                EPOCH_AND_BATCH_COUNT[0] += 1
 
 
 def _get_int_sz(targ, a_b_s):
@@ -227,7 +471,7 @@ def _get_closest_pending(pending):
     return None
 
 
-def batch_gen(pairs):
+def batch_gen(pairs, training=True):
     pending_batches = []
     pkeys = list(pairs.keys())
     max_pb = 100
@@ -239,6 +483,8 @@ def batch_gen(pairs):
     num_uni_ims = len(uni_ims)
     seen_inc = 100
     cseen = 0
+    stat_str = "\t%s images seen (%.2f%%) over %s comparisons, epoch %s, " \
+               "batch %s"
     while True:
         np.random.shuffle(pkeys)
         for i in pkeys:
@@ -249,12 +495,19 @@ def batch_gen(pairs):
                 if pos:
                     uni_ims.difference_update(pos)
                     cseen += 1
-                    if (cseen % seen_inc) == 0:
+                    if (cseen % seen_inc) == 0 and training:
+                        # [n_epochs, n_batches, n_comparisons]
                         n_seen = num_uni_ims - len(uni_ims)
                         seen_rat = 100. * float(n_seen) / num_uni_ims
                         nseenstr = locale.format("%d", n_seen, grouping=True)
-                        print '\t%s images seen, %.2fpc of total' % (nseenstr,
-                                                                   seen_rat)
+                        axx, bxx, cxx = \
+                            EPOCH_AND_BATCH_COUNT
+                        axx = locale.format("%d", axx, grouping=True)
+                        bxx = locale.format("%d", bxx, grouping=True)
+                        cxx = locale.format("%d", cxx, grouping=True)
+                        c_stat_str = stat_str % (nseenstr, seen_rat, cxx,
+                                                 axx, bxx)
+                        print c_stat_str
                         cseen = 0
                     yield pos
                 elif len(pending_batches) > max_pb:
@@ -262,14 +515,23 @@ def batch_gen(pairs):
                     if pos:
                         uni_ims.difference_update(pos)
                         cseen += 1
-                        if (cseen % seen_inc) == 0:
+                        if (cseen % seen_inc) == 0 and training:
                             n_seen = num_uni_ims - len(uni_ims)
                             seen_rat = 100. * float(n_seen) / num_uni_ims
-                            print '%i images seen, %.2fpc of total' % (n_seen, seen_rat)
+                            nseenstr = locale.format("%d", n_seen, grouping=True)
+                            axx, bxx, cxx = \
+                                EPOCH_AND_BATCH_COUNT
+                            axx = locale.format("%d", axx, grouping=True)
+                            bxx = locale.format("%d", bxx, grouping=True)
+                            cxx = locale.format("%d", cxx, grouping=True)
+                            c_stat_str = stat_str % (nseenstr, seen_rat, cxx,
+                                                     axx, bxx)
+                            print c_stat_str
                             cseen = 0
                         yield pos
-        with COUNT_LOCK:
-            EPOCH_AND_BATCH_COUNT[0] += 1
+        if training:
+            with COUNT_LOCK:
+                EPOCH_AND_BATCH_COUNT[0] += 1
 
 
 def gen_labels(batch, labels):
@@ -283,12 +545,15 @@ def gen_labels(batch, labels):
     Returns: The batch, and a win matrix, of size batch x batch x demographic
     groups
     '''
-    win_matrix = np.zeros((BATCH_SIZE, BATCH_SIZE, DEMOGRAPHIC_GROUPS))
+    dgs = DEMOGRAPHIC_GROUPS
+    win_matrix = np.zeros((BATCH_SIZE, BATCH_SIZE, dgs - 1))
     for m, i in enumerate(batch):
         for n, j in enumerate(batch):
             if (i, j) in labels:
-                win_matrix[m, n, :] = labels[(i,j)][:DEMOGRAPHIC_GROUPS]
-                win_matrix[n, m, :] = labels[(i,j)][DEMOGRAPHIC_GROUPS:]
+                mn = labels[(i,j)][:dgs-1] + labels[(i,j)][dgs] * BIN_FREQ
+                win_matrix[m, n, :] = mn
+                nm = labels[(i,j)][dgs:-1] + labels[(i,j)][-1] * BIN_FREQ
+                win_matrix[n, m, :] = nm
     lb = []
     for x in batch:
         if x is not None:
@@ -298,7 +563,7 @@ def gen_labels(batch, labels):
     return lb, win_matrix
 
 
-def bworker(pairs, labels, pyInQ):
+def bworker(pairs, labels, pyInQ, training=True):
     """
     Batch Worker. Designed to work asynchronously, continuously inserts new
     batches into the queue as tuples of (images, win_matrix), where win_matrix
@@ -311,7 +576,7 @@ def bworker(pairs, labels, pyInQ):
 
     Returns: None.
     """
-    bg = batch_gen(pairs)
+    bg = batch_gen(pairs, training=training)
     while True:
         next_batch = bg.next()
         batch, win_matrix = gen_labels(next_batch, labels)
@@ -329,9 +594,10 @@ def bworker(pairs, labels, pyInQ):
                     print 'Failed to place batch in batch queue'
         if VERBOSE:
                 print 'Placed batch in batch queue'
-        with COUNT_LOCK:
-            EPOCH_AND_BATCH_COUNT[1] += 1
-            EPOCH_AND_BATCH_COUNT[2] += np.sum(win_matrix)
+        if training:
+            with COUNT_LOCK:
+                EPOCH_AND_BATCH_COUNT[1] += 1
+                EPOCH_AND_BATCH_COUNT[2] += np.sum(win_matrix)
 
 ################################################################################
 # PYTHON QUEUE WORKER & HELPERS
@@ -410,7 +676,8 @@ def pyqworker(pyInQ, sess, enq_op, image_phds, label_phds, conf_phds):
 
 class InputManager(object):
     def __init__(self, image_phds, label_phds, conf_phds, tf_queue,
-                 enqueue_op, num_epochs=20, num_qworkers=4):
+                 enqueue_op, num_epochs=20, num_qworkers=4,
+                 data_source=DATA_SOURCE, is_training=True):
         """
         The input manager class
 
@@ -425,6 +692,9 @@ class InputManager(object):
             [tf.float, BATCH_SIZE x DEMOGRAPHIC_GROUPS]  < the confidences
         :param num_epochs: The number of epochs
         :param num_qworkers: The number of queue workers.
+        :param data_source: Where the data is stored.
+        :param is_training: Whether or not this input manager manages a
+        training queue.
         :return:
         """
         self.image_phds = image_phds
@@ -439,10 +709,11 @@ class InputManager(object):
         self.in_q = Queue(maxsize=BATCH_SIZE * num_gpus * 2)
         self.tf_queue = tf_queue
         self.enq_op = enqueue_op
-        self.pairs, self.labels = read_in_data(DATA_SOURCE)
+        self.pairs, self.labels = read_in_data(data_source)
         self.tot_comparisons = reduce(lambda x, y: x + np.sum(y),
                                       self.labels.values(), 0)
-        self.num_ex_per_epoch = self.tot_comparisons
+        self.num_ex_per_epoch = self.tot_comparisons * 1.5
+        self.is_training = is_training
 
     @property
     def epochs(self):
@@ -462,7 +733,8 @@ class InputManager(object):
     def start(self, sess):
         self.sess = sess
         self.bworker = Thread(target=bworker,
-                              args=(self.pairs, self.labels, self.in_q))
+                              args=(self.pairs, self.labels, self.in_q,
+                                    self.is_training))
         self.bworker.daemon = True
         self.bworker.start()
         for t in range(self.num_qworkers):
@@ -476,10 +748,11 @@ class InputManager(object):
             print 'Image Manager Started'
 
     def should_stop(self):
-        with COUNT_LOCK:
-            if self.EPOCH_AND_BATCH_COUNT[0] >= self._epochs:
-                self.stopper.set()
-                return True
+        if self.is_training:
+            with COUNT_LOCK:
+                if self.EPOCH_AND_BATCH_COUNT[0] >= self._epochs:
+                    self.stopper.set()
+                    return True
         return False
 
     def stop(self):

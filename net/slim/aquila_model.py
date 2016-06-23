@@ -37,6 +37,9 @@ from net.slim import ops
 from net.slim import scopes
 from net.slim import losses
 
+# the 'unknown' bin is not represented in the demographic groups here.
+DEMOGRAPHIC_GROUPS = DEMOGRAPHIC_GROUPS - 1
+
 
 def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,
            restore_logits=True, scope=''):
@@ -301,8 +304,8 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           net = ops.dropout(net, dropout_keep_prob, scope='dropout')
           net = ops.flatten(net, scope='flatten')
           # 2048
-          abstract_feats = ops.fc(net, num_abs_features, activation=None,
-                                  scope='abst_feats', restore=restore_logits)
+          abstract_feats = ops.fc(net, num_abs_features, scope='abst_feats',
+                                  restore=restore_logits)
           # 1024
           logits = ops.fc(abstract_feats, DEMOGRAPHIC_GROUPS,
                           activation=None, scope='logits',
