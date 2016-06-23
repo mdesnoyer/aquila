@@ -310,6 +310,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
         if step % 5 == 0:
             taao = sess.run([test_avg_acc_op])
             format_str = '%s: Test iteration: %.2f acc'
+            print(taao)
             print(format_str % (datetime.now(), taao))
 
         # Save the model checkpoint periodically.
