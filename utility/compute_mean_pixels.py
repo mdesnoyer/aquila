@@ -25,7 +25,7 @@ with open(data_src, 'r') as f:
 print 'Computing mean values'
 mean_vals = [0, 0, 0]
 count = 0
-not_avail = 0
+not_avail = set()
 for im in unique_ims:
     imfn = os.path.join(im_src, im)
     if os.path.exists(imfn):
@@ -40,9 +40,9 @@ for im in unique_ims:
             mg = mean_vals[1] / count
             mb = mean_vals[2] / count
             print '%i: r:%.3f g:%.3f b:%.3f (unav: %i)' % (count, mr, mg, mb,
-                                                           not_avail)
+                                                           len(not_avail))
     else:
-        not_avail += 1
+        not_avail.add(im)
 
 mr = mean_vals[0] / count
 mg = mean_vals[1] / count
