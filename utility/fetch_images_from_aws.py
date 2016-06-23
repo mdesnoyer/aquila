@@ -17,7 +17,7 @@ max_height = 314
 max_width = 558
 new_size = (max_width, max_height)
 nthreads = 32
-inQ = Queue(maxsize=nthreads*2)
+inQ = Queue()
 outQ = Queue()
 
 try:
@@ -37,7 +37,7 @@ def _parse_key(key):
 
 def _yt_filt_func(key):
     _, sim, _ = _parse_key(key)
-    return sim < 0.035 # from 0.027 to include more images.
+    return sim < 0.035  # from 0.027 to include more images.
 
 
 def _s3sourcer(bucket_name, filter_func=None):
@@ -76,6 +76,7 @@ def fetcher(inQ, outQ):
     while True:
         item = inQ.get()
         if item is None:
+            print 'Thread terminating'
             return
         imurl, nfn = item
         try:
@@ -136,6 +137,19 @@ for source in sources:
                 tot_obt += inc
             except:
                 break
+
+print 'All Enqueued'
+
+while True:
+    try:
+        inc = outQ.get(block=True, timeout=1)
+        tot_obt += inc
+        if not tot_obt % 1000:
+            to_s = locale.format("%d", tot_obt, grouping=True)
+            print '(all enqueued) %s total, %s requested, %s obtained' % (
+                tot_s, tr_s, to_s)
+    except:
+        break
 
 for i in range(nthreads * 2):
     inQ.put(None)
