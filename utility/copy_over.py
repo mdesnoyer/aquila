@@ -13,14 +13,14 @@ ims = glob(os.path.join(im_src, '*'))
 max_height = 314
 max_width = 558
 copied = 0
-for n, im in enumerate(ims):
+for n, cim in enumerate(ims):
     if not n % 1000:
         print '%i found, %i moved' % (n, copied)
-    _nfn = im.split('/')[-1].split('.')[0]
+    _nfn = cim.split('/')[-1].split('.')[0]
     nfn = os.path.join(im_dst, _nfn + '.jpg')
     if os.path.exists(nfn):
         continue
-    pim = Image.open(im)
+    im = Image.open(cim)
     w, h = im.size
     resize_ratio = min(max_width * 1./w, max_height * 1./h)
     nw, nh = int(w * resize_ratio), int(h * resize_ratio)
