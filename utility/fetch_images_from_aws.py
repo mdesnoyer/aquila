@@ -113,6 +113,8 @@ print 'Starting threads'
 for t in threads:
     t.start()
 
+print 'Starting fetch...'
+
 for source in sources:
     for imid, imurl, obj in source:
         tot += 1
@@ -134,6 +136,8 @@ for source in sources:
                 tot_obt += inc
             except:
                 break
+        break
+    break
 
 for i in range(nthreads * 2):
     inQ.put(None)
