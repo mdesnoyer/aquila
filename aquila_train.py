@@ -282,7 +282,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     summary_writer = tf.train.SummaryWriter(train_dir, sess.graph_def)
     print('%s: Model running for %i iterations' %
           (datetime.now(), max_steps))
-    for step in xrange(1, max_steps):
+    for step in xrange(0, max_steps):
         start_time = time.time()
         _, avg_loss, avg_acc, lr_float = sess.run([train_op, avg_loss_op,
                                                    avg_acc_op, lr])
@@ -312,7 +312,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
             print('Test iteration: %.2f acc, %.2f loss' % (taao, talo))
 
         # Save the model checkpoint periodically.
-        if step % 10000 == 0 or (step + 1) == max_steps:
+        if step > 0 and (step % 10000 == 0 or (step + 1) == max_steps):
             checkpoint_path = os.path.join(train_dir, 'model.ckpt')
             saver.save(sess, checkpoint_path, global_step=step)
     inp_mgr.stop()
