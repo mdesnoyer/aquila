@@ -307,7 +307,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
 
-        if step % 5 == 0:
+        if step % 100 == 0:
             taao = sess.run(test_avg_acc_op)
             format_str = '%s: Test iteration: %.2f acc'
             print(format_str % (datetime.now(), taao))
