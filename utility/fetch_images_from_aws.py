@@ -136,9 +136,6 @@ for source in sources:
                 tot_obt += inc
             except:
                 break
-        if not (tot + 1) % 1000:
-            break
-    break
 
 for i in range(nthreads * 2):
     inQ.put(None)
