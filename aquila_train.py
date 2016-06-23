@@ -270,8 +270,9 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
         print('%s: Pre-trained model restored from %s' %
                     (datetime.now(), pretrained_model_checkpoint_path))
 
-    # start the input manager?
+    # start the input managers
     inp_mgr.start(sess)
+    test_mgr.start(sess)
 
     # summary_writer = tf.train.SummaryWriter(
     #             train_dir, graph_def=sess.graph.as_graph_def(add_shapes=True))

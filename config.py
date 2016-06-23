@@ -17,7 +17,7 @@ SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE'
 TEST_DATA = '/data/aquila_v2/combined_testing'
 TEST_IMAGES = TRAIN_IMAGES
 NULL_IMAGE = '/tmp/null.jpg'
-MEAN_CHANNEL_VALS = [[[None, None, None]]]
+MEAN_CHANNEL_VALS = [[[92.366, 85.133, 81.674]]]
 # 'train' or 'validation'
 subset = 'train'
 
