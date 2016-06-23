@@ -25,13 +25,15 @@ im.save(NULL_IMAGE)
 tf_queue = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
                         [tf.float32, tf.float32, tf.float32, tf.string],
                         shapes=[[299, 299, 3],
-                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
-                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
+                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS-1],
+                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS-1],
                                 []])
 image_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
-label_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
+label_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE,
+                                                DEMOGRAPHIC_GROUPS-1])
               for _ in range(BATCH_SIZE)]
-conf_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE, DEMOGRAPHIC_GROUPS])
+conf_phds = [tf.placeholder(tf.float32, shape=[BATCH_SIZE,
+                                               DEMOGRAPHIC_GROUPS-1])
              for _ in range(BATCH_SIZE)]
 enqueue_op = get_enqueue_op(image_phds, label_phds, conf_phds, tf_queue)
 
@@ -43,15 +45,15 @@ im = InputManager(image_phds, label_phds, conf_phds, tf_queue,
 tf_queue_t = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
                         [tf.float32, tf.float32, tf.float32, tf.string],
                         shapes=[[299, 299, 3],
-                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
-                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS],
+                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS-1],
+                                [BATCH_SIZE, DEMOGRAPHIC_GROUPS-1],
                                 []])
 image_phds_t = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
 label_phds_t = [tf.placeholder(tf.float32, shape=[BATCH_SIZE,
-                                                 DEMOGRAPHIC_GROUPS])
+                                                 DEMOGRAPHIC_GROUPS-1])
                 for _ in range(BATCH_SIZE)]
 conf_phds_t = [tf.placeholder(tf.float32, shape=[BATCH_SIZE,
-                                                 DEMOGRAPHIC_GROUPS])
+                                                 DEMOGRAPHIC_GROUPS-1])
                for _ in range(BATCH_SIZE)]
 enqueue_op_t = get_enqueue_op(image_phds_t, label_phds_t, conf_phds_t,
                               tf_queue_t)
