@@ -168,6 +168,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                 loss, accuracy = _tower_loss(inputs, labels, conf, scope)
 
                 # FOR TESTING
+                scope.reuse_variables()
                 vinputs, vlabels, vconf, vfilenames = \
                     test_mgr.tf_queue.dequeue_many(
                     split_batch_size)
