@@ -154,16 +154,6 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     test_tow_acc_ops = []
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
-            with tf.name_scope('%s_%d_val' % (aquila.TOWER_NAME, i)) as scope:
-                vinputs, vlabels, vconf, vfilenames = \
-                    test_mgr.tf_queue.dequeue_many(
-                    split_batch_size)
-                test_loss, test_accuracy = _tower_loss(vinputs, vlabels, vconf,
-                                                       scope)
-                test_tow_loss_ops.append(test_loss)
-                test_tow_acc_ops.append(test_accuracy)
-    for i in xrange(num_gpus):
-        with tf.device('/gpu:%d' % i):
             with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
                 # Calculate the loss for one tower of the ImageNet model. This
                 # function constructs the entire ImageNet model but shares the
@@ -176,6 +166,17 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
                 loss, accuracy = _tower_loss(inputs, labels, conf, scope)
+
+                # FOR TESTING
+                vinputs, vlabels, vconf, vfilenames = \
+                    test_mgr.tf_queue.dequeue_many(
+                    split_batch_size)
+                test_loss, test_accuracy = _tower_loss(vinputs, vlabels, vconf,
+                                                       scope)
+                test_tow_loss_ops.append(test_loss)
+                test_tow_acc_ops.append(test_accuracy)
+                # FOR TESTING
+
                 tow_loss_ops.append(loss)
                 tow_acc_ops.append(accuracy)
                 # Reuse variables for the next tower.
