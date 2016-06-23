@@ -25,7 +25,7 @@ from config import *
 BATCH_SIZE *= num_gpus
 
 
-def _tower_loss(inputs, labels, conf, scope):
+def _tower_loss(inputs, labels, conf, scope, is_test=False):
     """
     Calculates the loss for a single tower, which is specified by scope.
 
@@ -51,6 +51,8 @@ def _tower_loss(inputs, labels, conf, scope):
 
     # create the accuracy graph
     accuracy = aquila.accuracy(logits, labels)
+    if is_test:
+        return accuracy
     # accuracy_averages = tf.train.ExponentialMovingAverage(0.9,
     # name='accuracy')
     # accuracy_averages_op = accuracy_averages.apply([accuracy])
@@ -150,7 +152,6 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     tower_grads = []
     tow_loss_ops = []
     tow_acc_ops = []
-    test_tow_loss_ops = []
     test_tow_acc_ops = []
     for i in xrange(num_gpus):
         with tf.device('/gpu:%d' % i):
@@ -171,11 +172,10 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                     loss, accuracy = _tower_loss(inputs, labels, conf, scope)
                     # FOR TESTING
                     varscope.reuse_variables()
-                    test_loss, test_accuracy = _tower_loss(vinputs, vlabels,
-                                                           vconf, scope)
+                    test_accuracy = _tower_loss(vinputs, vlabels, vconf, scope,
+                                                is_test=True)
                     # /FOR TESTING
                 # FOR TESTING
-                test_tow_loss_ops.append(test_loss)
                 test_tow_acc_ops.append(test_accuracy)
                 # /FOR TESTING
 
@@ -202,9 +202,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                 tower_grads.append(grads)
     avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
-    test_avg_loss_op = tf.reduce_mean(tf.pack(test_tow_loss_ops))
     test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
-    tf.scalar_summary('validation/loss', test_avg_loss_op)
     tf.scalar_summary('validation/accuracy', test_avg_acc_op)
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
@@ -309,9 +307,10 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
             summary_str = sess.run(summary_op)
             summary_writer.add_summary(summary_str, step)
 
-        if step % 100 == 0:
-            talo, taao = sess.run([test_avg_loss_op, test_avg_acc_op])
-            print('Test iteration: %.2f acc, %.2f loss' % (taao, talo))
+        if step % 5 == 0:
+            taao = sess.run([test_avg_acc_op])
+            format_str = '%s: Test iteration: %.2f acc'
+            print(format_str % (datetime.now(), taao))
 
         # Save the model checkpoint periodically.
         if step > 0 and (step % 10000 == 0 or (step + 1) == max_steps):
