@@ -342,7 +342,7 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
     im_conf = []
     # process the mean channel values to integers so that we can still pass
     # messages as integers
-    mcv = np.array(MEAN_CHANNEL_VALS).round().astype(float)
+    mcv = np.array(MEAN_CHANNEL_VALS).round().astype(np.float32)
     channel_mean_tensor = tf.constant(mcv)
 
     for image_phd, lab_phd, conf_phd in zip(image_phds, label_phds, conf_phds):
