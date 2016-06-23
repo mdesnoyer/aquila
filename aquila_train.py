@@ -159,24 +159,25 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                 # function constructs the entire ImageNet model but shares the
                 # variables across all towers.
                 inputs, labels, conf, filenames = inp_mgr.tf_queue.dequeue_many(
-                    split_batch_size)
+                        split_batch_size)
+                vinputs, vlabels, vconf, vfilenames = \
+                    test_mgr.tf_queue.dequeue_many(split_batch_size)
                 tf.scalar_summary('input_queue_size', inp_mgr.tf_queue.size())
-
                 tf.image_summary('images', inputs, max_images=4,
                                  collections=[tf.GraphKeys.SUMMARIES],
                                  name=None)
-                loss, accuracy = _tower_loss(inputs, labels, conf, scope)
+                with tf.variable_scope('testtrain') as varscope:
 
+                    loss, accuracy = _tower_loss(inputs, labels, conf, scope)
+                    # FOR TESTING
+                    varscope.reuse_variables()
+                    test_loss, test_accuracy = _tower_loss(vinputs, vlabels,
+                                                           vconf, scope)
+                    # /FOR TESTING
                 # FOR TESTING
-                scope.reuse_variables()
-                vinputs, vlabels, vconf, vfilenames = \
-                    test_mgr.tf_queue.dequeue_many(
-                    split_batch_size)
-                test_loss, test_accuracy = _tower_loss(vinputs, vlabels, vconf,
-                                                       scope)
                 test_tow_loss_ops.append(test_loss)
                 test_tow_acc_ops.append(test_accuracy)
-                # FOR TESTING
+                # /FOR TESTING
 
                 tow_loss_ops.append(loss)
                 tow_acc_ops.append(accuracy)
