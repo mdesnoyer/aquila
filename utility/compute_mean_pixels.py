@@ -7,7 +7,7 @@ import numpy as np
 from glob import glob
 import os
 
-im_src = '/data/aquila_training/images'  # the image source
+im_src = '/data/aquila_training_images'  # the image source
 data_src = '/data/aquila_v2/combined'
 
 unique_ims = set()
