@@ -353,7 +353,7 @@ def get_enqueue_op(image_phds, label_phds, conf_phds, queue):
         img = tf.to_float(jpeg_im) - channel_mean_tensor
         img /= 256.
         # pad to appropriate size
-        img = tf.image.resize_image_with_crop_or_pad(img, 314, 558)
+        img = resize_image_with_crop_or_pad(img, 314, 558, dynamic_shape=True)
         # resize to 314 x 314
         img = tf.expand_dims(img, 0)
         img = tf.image.resize_bilinear(img, (314, 314))
