@@ -73,7 +73,10 @@ PERFORM_BATCHNORM = False  # If not, the model diverges immediately
 BATCH_SIZE = 23
 
 # are variable-length >.<
-NUM_EPOCHS = 10
+if SUBSET_SIZE:
+    NUM_EPOCHS = 9999
+else:
+    NUM_EPOCHS = 10
 
 # Constants dictating the learning rate schedule.
 RMSPROP_DECAY = 0.9                # Decay term for RMSProp.
