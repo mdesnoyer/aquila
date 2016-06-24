@@ -69,7 +69,7 @@ else:
     # the initial standard deviation (for initialization)
     INIT_STD = 1e-7
     # the initial learning rate
-    initial_learning_rate = 0.001
+    initial_learning_rate = 1e-6
 
 # NOTE: Batch size should have the same parity as the
 # average pair group.
