@@ -18,7 +18,7 @@ from config import *
 import tensorflow as tf
 
 # first, create a null image
-imarray = np.random.rand(314, 314, 3) * 255
+imarray = np.random.rand(314, 558, 3) * 255
 im = Image.fromarray(imarray.astype('uint8')).convert('RGBA')
 im.save(NULL_IMAGE)
 

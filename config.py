@@ -12,7 +12,7 @@ if os.path.exists('/tmp/aquila_test_data/combined'):
 else:
     TRAIN_DATA = '/data/aquila_v2/combined'
     TRAIN_IMAGES = '/data/aquila_training_images'
-SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE'
+SUBSET_SIZE = 5000  # None  # if not None, will only train on 'SUBSET_SIZE'
 # pairs.
 TEST_DATA = '/data/aquila_v2/combined_testing'
 TEST_IMAGES = TRAIN_IMAGES
@@ -66,7 +66,7 @@ num_epochs_per_decay = 0.05  # 1  # within-epoch decay
 learning_rate_decay_factor = 0.975
 
 # whether or not to perform batch normalization
-PERFORM_BATCHNORM = True  # If not, the model diverges immediately
+PERFORM_BATCHNORM = False  # If not, the model diverges immediately
 
 # NOTE: Batch size should have the same parity as the
 # average pair group.
