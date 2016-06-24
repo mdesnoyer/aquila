@@ -51,19 +51,22 @@ LAPLACE_SMOOTHING_C = 0.05
 restore_logits = True
 
 # the initial standard deviation (for initialization)
-INIT_STD = 0.000001
+INIT_STD = 0.0001
 
 # restore the pretrained model from this location
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
-initial_learning_rate = 0.001  # 0.05
+initial_learning_rate = 0.000001
 
 # epochs after which learning rate decays
 num_epochs_per_decay = 0.05  # 1  # within-epoch decay
 
 # the learning rate decay factor
 learning_rate_decay_factor = 0.975
+
+# whether or not to perform batch normalization
+PERFORM_BATCHNORM = False  # If not, the model diverges immediately
 
 # NOTE: Batch size should have the same parity as the
 # average pair group.
