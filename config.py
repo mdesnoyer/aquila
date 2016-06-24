@@ -60,7 +60,7 @@ num_epochs_per_decay = 0.05  # 1  # within-epoch decay
 learning_rate_decay_factor = 0.975
 
 # whether or not to perform batch normalization
-PERFORM_BATCHNORM = False  # If not, the model diverges immediately
+PERFORM_BATCHNORM = True  # If not, the model diverges immediately
 
 if PERFORM_BATCHNORM:
     INIT_STD = 0.001
