@@ -204,8 +204,8 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
     test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
     test_acc_avg = tf.train.ExponentialMovingAverage(0.995, name='avg_test_acc')
-    loss_averages_op = loss_averages.apply(test_avg_acc_op)
-    tf.scalar_summary('validation/accuracy_smoothed', test_acc_avg.average(test_avg_acc_op))
+    loss_averages_op = test_acc_avg.apply(test_avg_acc_op)
+    summaries.append(tf.scalar_summary('validation/accuracy_smoothed', test_acc_avg.average(test_avg_acc_op)))
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = _average_gradients(tower_grads)
