@@ -130,7 +130,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
 
     num_batches_per_epoch = ex_per_epoch / BATCH_SIZE
     max_steps = int(num_batches_per_epoch * NUM_EPOCHS)
-    decay_steps = int(num_batches_per_epoch * num_epochs_per_decay)
+    decay_steps = 10000 # int(num_batches_per_epoch * num_epochs_per_decay)
     lr = tf.train.exponential_decay(initial_learning_rate,
                                     global_step,
                                     decay_steps,
@@ -203,6 +203,9 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
     test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
+    test_acc_avg = tf.train.ExponentialMovingAverage(0.995, name='avg_test_acc')
+    loss_averages_op = loss_averages.apply(test_avg_acc_op)
+    tf.scalar_summary('validation/accuracy_smoothed', test_acc_avg.average(test_avg_acc_op))
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = _average_gradients(tower_grads)
