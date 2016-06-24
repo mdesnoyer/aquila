@@ -60,6 +60,10 @@ def inference(inputs, abs_feats=1024, for_training=True,
                 stddev=0.1,
                 activation=tf.nn.relu,
                 batch_norm_params=None): #batch_norm_params):
+            # i'm disabling batch normalization, because I'm concerned that
+            # even though the authors claim it preserves representational
+            # power, I don't believe their claim and I'm concerned about the
+            # distortion it may introduce into the images.
             # Force all Variables to reside on the CPU.
             with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
                 logits, endpoints = slim.aquila.aquila(
