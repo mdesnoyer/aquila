@@ -27,6 +27,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
+from config import INIT_STD
 
 from tensorflow.python.training import moving_averages
 
@@ -34,7 +35,6 @@ from net.slim import losses
 from net.slim import scopes
 from net.slim import variables
 
-from config import INIT_STD
 # Used to keep the update ops done by batch_norm.
 UPDATE_OPS_COLLECTION = '_update_ops_'
 
