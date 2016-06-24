@@ -57,7 +57,7 @@ INIT_STD = 0.000001
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 
 # the initial learning rate
-initial_learning_rate = 0.000001
+initial_learning_rate = 0.0000001
 
 # epochs after which learning rate decays
 num_epochs_per_decay = 0.05  # 1  # within-epoch decay
