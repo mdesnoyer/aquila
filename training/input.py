@@ -388,7 +388,7 @@ def _batch_gen(pairs, training=True):
     pending_batches = []
     pkeys = list(pairs.keys())
     attempts = 0  # the number of attempts made on fetching a batch
-    max_pb = 100
+    max_pb = 20
     while True:
         np.random.shuffle(pkeys)
         for i in pkeys:
