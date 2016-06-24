@@ -203,7 +203,6 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
     test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
-    tf.scalar_summary('validation/accuracy', test_avg_acc_op)
     # We must calculate the mean of each gradient. Note that this is the
     # synchronization point across all towers.
     grads = _average_gradients(tower_grads)
@@ -213,7 +212,7 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
 
     # Add a summary to track the learning rate.
     summaries.append(tf.scalar_summary('learning_rate', lr))
-
+    summaries.append(tf.scalar_summary('validation/accuracy', test_avg_acc_op))
     # Add histograms for gradients.
     for grad, var in grads:
         if grad is not None:
