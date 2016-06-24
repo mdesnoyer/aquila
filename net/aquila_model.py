@@ -39,7 +39,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
     :param inputs: An N x 299 x 299 x 3 sized float32 tensor (images)
     :param abs_feats: The number of abstract features to learn.
     :param for_training: Boolean, whether or not training is being performed.
-    :param restore_logits: Restore the logits. This should only be done if the 
+    :param restore_logits: Restore the logits. This should only be done if the
     model is being trained on a previous snapshot of Aquila. If training from
     scratch, or transfer learning from inception, this should be false as the
     number of abstract features will likely change.
@@ -54,12 +54,12 @@ def inference(inputs, abs_feats=1024, for_training=True,
         'epsilon': 0.001,
     }
     # Set weight_decay for weights in Conv and FC layers.
-    with slim.arg_scope([slim.ops.conv2d, slim.ops.fc], 
+    with slim.arg_scope([slim.ops.conv2d, slim.ops.fc],
             weight_decay=regularization_strength):
         with slim.arg_scope([slim.ops.conv2d],
                 stddev=0.1,
                 activation=tf.nn.relu,
-                batch_norm_params=batch_norm_params):
+                batch_norm_params=None): #batch_norm_params):
             # Force all Variables to reside on the CPU.
             with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
                 logits, endpoints = slim.aquila.aquila(
@@ -121,6 +121,6 @@ def _activation_summaries(endpoints):
         for act in endpoints.values():
             _activation_summary(act)
 
-    
+
 
 
