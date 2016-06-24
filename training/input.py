@@ -597,7 +597,7 @@ def bworker(pairs, labels, pyInQ, training=True):
         if training:
             with COUNT_LOCK:
                 EPOCH_AND_BATCH_COUNT[1] += 1
-                EPOCH_AND_BATCH_COUNT[2] += np.sum(np.sum(win_matrix, 3) > 0)
+                EPOCH_AND_BATCH_COUNT[2] += np.sum(np.sum(win_matrix, 2) > 0)
 
 ################################################################################
 # PYTHON QUEUE WORKER & HELPERS
