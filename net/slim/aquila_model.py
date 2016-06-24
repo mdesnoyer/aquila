@@ -236,13 +236,13 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           aux_logits = ops.conv2d(aux_logits, 128, [1, 1], scope='proj')
           # Shape of feature map before the final layer.
           shape = aux_logits.get_shape()
-          aux_logits = ops.conv2d(aux_logits, 768, shape[1:3], stddev=0.01,
+          aux_logits = ops.conv2d(aux_logits, 768, shape[1:3],
                                   padding='VALID')
           aux_logits = ops.flatten(aux_logits)
           aux_logits = ops.fc(aux_logits, num_abs_features, activation=None,
-                              stddev=0.001, restore=restore_logits)
+                              restore=restore_logits)
           aux_logits = ops.fc(aux_logits, DEMOGRAPHIC_GROUPS, activation=None,
-                              stddev=0.001, restore=restore_logits)
+                              restore=restore_logits)
           end_points['aux_logits'] = aux_logits
         # mixed_8: 17 x 17 x 1280.
         with tf.variable_scope('mixed_17x17x1280a'):
