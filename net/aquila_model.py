@@ -10,7 +10,7 @@ from __future__ import division
 import re
 import tensorflow as tf
 from net.slim import slim
-
+from config import PERFORM_BATCHNORM
 
 # If a model is trained using multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
@@ -53,13 +53,16 @@ def inference(inputs, abs_feats=1024, for_training=True,
         # epsilon to prevent 0s in variance.
         'epsilon': 0.001,
     }
+
+    if not PERFORM_BATCHNORM:
+        batch_norm_params = None
     # Set weight_decay for weights in Conv and FC layers.
     with slim.arg_scope([slim.ops.conv2d, slim.ops.fc],
             weight_decay=regularization_strength):
         with slim.arg_scope([slim.ops.conv2d],
                 stddev=0.1,
                 activation=tf.nn.relu,
-                batch_norm_params=None): #batch_norm_params):
+                batch_norm_params=batch_norm_params):
             # i'm disabling batch normalization, because I'm concerned that
             # even though the authors claim it preserves representational
             # power, I don't believe their claim and I'm concerned about the
