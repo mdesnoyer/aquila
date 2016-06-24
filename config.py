@@ -51,7 +51,7 @@ LAPLACE_SMOOTHING_C = 0.05
 restore_logits = True
 
 # the initial standard deviation (for initialization)
-INIT_STD = 0.0001
+INIT_STD = 0.000001
 
 # restore the pretrained model from this location
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
