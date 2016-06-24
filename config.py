@@ -12,7 +12,7 @@ if os.path.exists('/tmp/aquila_test_data/combined'):
 else:
     TRAIN_DATA = '/data/aquila_v2/combined'
     TRAIN_IMAGES = '/data/aquila_training_images'
-SUBSET_SIZE = None  # if not None, will only train on 'SUBSET_SIZE'
+SUBSET_SIZE = 1000 # None  # if not None, will only train on 'SUBSET_SIZE'
 # pairs.
 TEST_DATA = '/data/aquila_v2/combined_testing'
 TEST_IMAGES = TRAIN_IMAGES
@@ -51,7 +51,7 @@ LAPLACE_SMOOTHING_C = 0.05
 restore_logits = True
 
 # the initial standard deviation (for initialization)
-INIT_STD = 0.01
+INIT_STD = 0.001
 
 # restore the pretrained model from this location
 pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
