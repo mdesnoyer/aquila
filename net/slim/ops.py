@@ -34,6 +34,7 @@ from net.slim import losses
 from net.slim import scopes
 from net.slim import variables
 
+from config import INIT_STD
 # Used to keep the update ops done by batch_norm.
 UPDATE_OPS_COLLECTION = '_update_ops_'
 
