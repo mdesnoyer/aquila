@@ -47,6 +47,10 @@ LAPLACE_SMOOTHING_C = 0.05
 # ---------------------------------------------------------------------------- #
 # Flags governing the type of training.
 # ---------------------------------------------------------------------------- #
+
+# dropout prob
+DROPOUT_KEEP_PROB = 0.8
+
 # Whether or not to restore the logits.
 restore_logits = True
 
@@ -69,7 +73,7 @@ else:
     # the initial standard deviation (for initialization)
     INIT_STD = 1e-7
     # the initial learning rate
-    initial_learning_rate = 1e-6
+    initial_learning_rate = 0.0  # 1e-6
 
 # NOTE: Batch size should have the same parity as the
 # average pair group.
@@ -87,4 +91,4 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 # regularization strength
-WEIGHT_DECAY = 0.00000001  # this should be very low.
+WEIGHT_DECAY = 0.0 # 0.00000001  # this should be very low.

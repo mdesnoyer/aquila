@@ -11,7 +11,7 @@ import re
 import tensorflow as tf
 from net.slim import slim
 from config import PERFORM_BATCHNORM
-
+from config import DROPOUT_PROB
 # If a model is trained using multiple GPUs, prefix all Op names with tower_name
 # to differentiate the operations. Note that this prefix is removed from the
 # names of the summaries when visualizing a model.
@@ -71,7 +71,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
             with slim.arg_scope([slim.variables.variable], device='/cpu:0'):
                 logits, endpoints = slim.aquila.aquila(
                     inputs,
-                    dropout_keep_prob=0.8,
+                    dropout_keep_prob=DROPOUT_KEEP_PROB,
                     num_abs_features=abs_feats,
                     is_training=for_training,
                     restore_logits=restore_logits,
