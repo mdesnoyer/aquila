@@ -61,7 +61,7 @@ pretrained_model_checkpoint_path = ''  # '/data/aquila_snaps/model.ckpt-20000'
 num_epochs_per_decay = 0.05  # 1  # within-epoch decay
 
 # the learning rate decay factor
-learning_rate_decay_factor = 0.975
+learning_rate_decay_factor = 0.995
 
 # whether or not to perform batch normalization
 PERFORM_BATCHNORM = False  # If not, the model diverges immediately
