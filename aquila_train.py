@@ -286,6 +286,12 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     summary_writer = tf.train.SummaryWriter(train_dir, sess.graph_def)
     print('%s: Model running for %i iterations' %
           (datetime.now(), max_steps))
+    def exp_av(orig, cur):
+        coef = 0.995
+        return orig * coef + cur * (1 - coef)
+    e_cur_acc = 0
+    e_cur_loss = 1.0
+
     for step in xrange(0, max_steps):
         start_time = time.time()
         _, avg_loss, avg_acc, lr_float = sess.run([train_op, avg_loss_op,
@@ -303,11 +309,14 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
             raise Exception('Model diverged with loss = NaN on step %i' % step)
         if step % 1 == 0:
             examples_per_sec = BATCH_SIZE / float(duration)
-            format_str = ('%s: step %d, loss = %.4f, accuracy = %.2f (%.1f '
+            format_str = ('%s: step %d, loss = %.4f (smoothed: %g), accuracy = %.2f (smoothed: %g) (%.1f '
                           'examples/sec; '
                           '%.3f sec/batch) (lr is %g)')
-            print(format_str % (datetime.now(), step, avg_loss, avg_acc,
-                                examples_per_sec, duration, lr_float))
+            e_cur_acc = exp_av(e_cur_acc, avg_acc)
+            e_cur_loss = exp_av(e_cur_loss, avg_loss)
+            print(format_str % (datetime.now(), step, avg_loss, e_cur_loss,
+                                avg_acc, e_cur_acc, examples_per_sec,
+                                duration, lr_float))
 
         if step > 0 and (step % 100 == 0):
             summary_str = sess.run(summary_op)
