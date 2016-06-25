@@ -49,7 +49,7 @@ LAPLACE_SMOOTHING_C = 0.05
 # ---------------------------------------------------------------------------- #
 
 # dropout prob
-DROPOUT_KEEP_PROB = 0.8
+DROPOUT_KEEP_PROB = 1.0 # 0.8
 
 # Whether or not to restore the logits.
 restore_logits = True
