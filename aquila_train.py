@@ -287,10 +287,11 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
     print('%s: Model running for %i iterations' %
           (datetime.now(), max_steps))
     def exp_av(orig, cur):
-        coef = 0.995
-        return orig * coef + cur * (1 - coef)
-    e_cur_acc = 0
-    e_cur_loss = 1.0
+        if orig is None:
+            orig = cur
+        return orig * 0.999 + cur * (1 - 0.999)
+    e_cur_acc = None
+    e_cur_loss = None
 
     for step in xrange(0, max_steps):
         start_time = time.time()

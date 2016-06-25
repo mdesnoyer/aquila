@@ -41,8 +41,8 @@ from net.slim import losses
 DEMOGRAPHIC_GROUPS = DEMOGRAPHIC_GROUPS - 1
 
 
-def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=True,
-           restore_logits=True, scope=''):
+def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024,
+           is_training=True, restore_logits=True, scope=''):
   """
   Args:
     inputs: a tensor of size [batch_size, height, width, channels].
