@@ -151,7 +151,9 @@ def ranknet_loss_demo(y, w, co, weight=1.0, scope=None):
         Wn = tf.div(w, Wd)  # the win ratios
         Wn = laplace_smooth_tf(Wn)  # smooth the win ratios
         t_1 = -tf.mul(co, dS)
-        t_2 = tf.log(1 + tf.exp(dS))
+        # make sure this is numerically stable
+        K = tf.maximum(tf.to_float(0.), dS)
+        t_2 = K + tf.log(tf.exp(0 - K) + tf.exp(dS - K))
         divisor = 2. / w.get_shape().num_elements()
         loss = tf.reduce_sum(tf.mul((t_1 + t_2), Wn)) * divisor
         tf.add_to_collection(LOSSES_COLLECTION, weight * loss)

@@ -45,6 +45,9 @@ def prelu(inputs):
                               trainable=True, collections='relu_params')
   return tf.maximum(param * inputs, inputs)
 
+def leaky_relu(inputs):
+  return tf.maximum(0.001 * inputs, inputs)
+
 
 @scopes.add_arg_scope
 def batch_norm(inputs,
@@ -136,7 +139,7 @@ def conv2d(inputs,
            kernel_size,
            stride=1,
            padding='SAME',
-           activation=prelu,
+           activation=leaky_relu,
            stddev=INIT_STD,
            bias=0.0,
            weight_decay=0,
@@ -213,7 +216,7 @@ def conv2d(inputs,
 @scopes.add_arg_scope
 def fc(inputs,
        num_units_out,
-       activation=prelu,
+       activation=leaky_relu,
        stddev=INIT_STD,
        bias=0.0,
        weight_decay=0,

@@ -75,6 +75,9 @@ else:
     # the initial learning rate
     initial_learning_rate = 1e-8  # 1e-6
 
+# clip the gradients to this
+GRAD_CLIP = 0.5
+
 # NOTE: Batch size should have the same parity as the
 # average pair group.
 BATCH_SIZE = 23

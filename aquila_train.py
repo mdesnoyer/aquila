@@ -200,6 +200,13 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
 
                 # Keep track of the gradients across all towers.
                 tower_grads.append(grads)
+
+                # execute gradient clipping if requested
+                if GRAD_CLIP:
+                    ngrad_clip = GRAD_CLIP / (lr / initial_learning_rate)
+                    grads = [[tf.clip_by_value(x[0],
+                              -ngrad_clip,
+                              ngrad_clip), x[1]] for x in grads]
     avg_loss_op = tf.reduce_mean(tf.pack(tow_loss_ops))
     avg_acc_op = tf.reduce_mean(tf.pack(tow_acc_ops))
     test_avg_acc_op = tf.reduce_mean(tf.pack(test_tow_acc_ops))
