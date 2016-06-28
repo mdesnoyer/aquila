@@ -40,6 +40,13 @@ UPDATE_OPS_COLLECTION = '_update_ops_'
 
 
 @scopes.add_arg_scope
+def prelu(inputs):
+  param = variables.variable('leakiness', [1], initializer=None,
+                              trainable=True, collections='relu_params')
+  return tf.maximum(param * inputs, inputs)
+
+
+@scopes.add_arg_scope
 def batch_norm(inputs,
                decay=0.999,
                scale=False,
@@ -129,7 +136,7 @@ def conv2d(inputs,
            kernel_size,
            stride=1,
            padding='SAME',
-           activation=tf.nn.relu,
+           activation=prelu,
            stddev=INIT_STD,
            bias=0.0,
            weight_decay=0,
@@ -206,7 +213,7 @@ def conv2d(inputs,
 @scopes.add_arg_scope
 def fc(inputs,
        num_units_out,
-       activation=tf.nn.relu,
+       activation=prelu,
        stddev=INIT_STD,
        bias=0.0,
        weight_decay=0,
