@@ -4,7 +4,7 @@ Configuration for Aquila
 import os
 
 # where to write event logs and checkpoints
-train_dir = '/data/aquila_v2_snaps'
+train_dir = '/data/aquila_v3_snaps'
 # the list of training data
 if os.path.exists('/tmp/aquila_test_data/combined'):
     TRAIN_DATA = '/tmp/aquila_test_data/combined'
