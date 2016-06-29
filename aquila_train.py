@@ -137,9 +137,10 @@ def train(inp_mgr, test_mgr, ex_per_epoch):
                                     learning_rate_decay_factor,
                                     staircase=True)
     # Create an optimizer that performs gradient descent.
-    opt = tf.train.RMSPropOptimizer(lr, RMSPROP_DECAY,
-                                    momentum=RMSPROP_MOMENTUM,
-                                    epsilon=RMSPROP_EPSILON)
+    # opt = tf.train.RMSPropOptimizer(lr, RMSPROP_DECAY,
+    #                                 momentum=RMSPROP_MOMENTUM,
+    #                                 epsilon=RMSPROP_EPSILON)
+    opt = tf.train.AdamOptimizer(lr)
 
     # Get images and labels for ImageNet and split the batch across GPUs.
     assert BATCH_SIZE % num_gpus == 0, (

@@ -82,8 +82,8 @@ global_step = tf.get_variable(
                 'global_step', [],
                 initializer=tf.constant_initializer(0), trainable=False)
 
-lr = 1e-7
-WEIGHT_DECAY = 0.000001
+lr = 1e-5
+WEIGHT_DECAY = 0.000000001
 # opt = tf.train.RMSPropOptimizer(lr, RMSPROP_DECAY,
 #                                     momentum=RMSPROP_MOMENTUM,
 #                                     epsilon=RMSPROP_EPSILON)

@@ -71,9 +71,9 @@ if PERFORM_BATCHNORM:
     initial_learning_rate = 0.1
 else:
     # the initial standard deviation (for initialization)
-    INIT_STD = 1e-7
+    INIT_STD = 1e-4
     # the initial learning rate
-    initial_learning_rate = 1e-8  # 1e-6
+    initial_learning_rate = 1e-5  # 1e-6
 
 # clip the gradients to this
 GRAD_CLIP = 0.5
@@ -94,4 +94,4 @@ RMSPROP_MOMENTUM = 0.9             # Momentum in RMSProp.
 RMSPROP_EPSILON = 1.0              # Epsilon term for RMSProp.
 
 # regularization strength
-WEIGHT_DECAY = 0.0 # 0.00000001  # this should be very low.
+WEIGHT_DECAY = 0.00000001  # this should be very low.
