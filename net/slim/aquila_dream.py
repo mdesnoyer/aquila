@@ -204,18 +204,18 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
             branch_pool = ops.conv2d(branch_pool, 192, [1, 1])
           net = tf.concat(3, [branch1x1, branch7x7, branch7x7dbl, branch_pool])
           end_points['mixed_17x17x768e'] = net
-        # Auxiliary Head logits
-        aux_logits = tf.identity(end_points['mixed_17x17x768e'])
-        with tf.variable_scope('aux_logits'):
-          aux_logits = ops.avg_pool(aux_logits, [5, 5], stride=3,
-                                    padding='VALID')
-          aux_logits = ops.conv2d(aux_logits, 128, [1, 1], scope='proj')
-          # Shape of feature map before the final layer.
-          shape = aux_logits.get_shape()
-          aux_logits = ops.conv2d(aux_logits, 768, shape[1:3],
-                                  padding='VALID')
-          aux_logits = ops.flatten(aux_logits)
-          end_points['aux_logits'] = aux_logits
+        # # Auxiliary Head logits
+        # aux_logits = tf.identity(end_points['mixed_17x17x768e'])
+        # with tf.variable_scope('aux_logits'):
+        #   aux_logits = ops.avg_pool(aux_logits, [5, 5], stride=3,
+        #                             padding='VALID')
+        #   aux_logits = ops.conv2d(aux_logits, 128, [1, 1], scope='proj')
+        #   # Shape of feature map before the final layer.
+        #   shape = aux_logits.get_shape()
+        #   aux_logits = ops.conv2d(aux_logits, 768, shape[1:3],
+        #                           padding='VALID')
+        #   aux_logits = ops.flatten(aux_logits)
+        #   end_points['aux_logits'] = aux_logits
         # mixed_8: 17 x 17 x 1280.
         with tf.variable_scope('mixed_17x17x1280a'):
           with tf.variable_scope('branch3x3'):
@@ -269,12 +269,12 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           net = tf.concat(3, [branch1x1, branch3x3, branch3x3dbl, branch_pool])
           end_points['mixed_8x8x2048b'] = net
         # Final pooling and prediction
-        with tf.variable_scope('logits'):
-          shape = net.get_shape()
-          net = ops.avg_pool(net, shape[1:3], padding='VALID', scope='pool')
-          # 1 x 1 x 2048
-          net = ops.dropout(net, dropout_keep_prob, scope='dropout')
-          net = ops.flatten(net, scope='flatten')
-          end_points['final_conv'] = net
+        # with tf.variable_scope('logits'):
+        #   shape = net.get_shape()
+        #   net = ops.avg_pool(net, shape[1:3], padding='VALID', scope='pool')
+        #   # 1 x 1 x 2048
+        #   net = ops.dropout(net, dropout_keep_prob, scope='dropout')
+        #   net = ops.flatten(net, scope='flatten')
+        #   end_points['final_conv'] = net
       return end_points
 

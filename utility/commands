@@ -2,7 +2,13 @@ tensorboard --logdir=/data/aquila_v2_snaps --port=8888
 
 python init_train.py
 
-ssh -i ~/.ssh/nick_gpu_instance.pem -L 8888:10.0.67.62:8888 ubuntu@10.0.67.62
 
+# NEW NETWORK
+ssh -i ~/.ssh/nick_gpu_instance.pem -L 8888:10.0.75.50:8888 ubuntu@10.0.75.50
+tensorboard --logdir=/data/aquila_v3_snaps --port=8888
+go to http://0.0.0.0:8888
 
-then go to http://0.0.0.0:8888
+# OLD NETWORK
+ssh -i ~/.ssh/nick_gpu_instance.pem -L 8889:10.0.67.62:8889 ubuntu@10.0.67.62
+tensorboard --logdir=/data/aquila_v2_snaps --port=8889
+go to http://0.0.0.0:8889

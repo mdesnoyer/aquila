@@ -173,6 +173,8 @@ def conv2d(inputs,
     raise ValueError('kernel_size must be a 2-D list.')
   with tf.variable_op_scope([inputs], scope, 'Conv'):
     num_filters_in = inputs.get_shape()[-1]
+    if  num_filters_in.value is None:
+        num_filters_in = 3
     weights_shape = [kernel_size[0], kernel_size[1],
                      num_filters_in, num_filters_out]
     weights_initializer = tf.truncated_normal_initializer(stddev=stddev)

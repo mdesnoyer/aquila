@@ -17,6 +17,7 @@
 
 # Collapse tf-slim into a single namespace.
 import aquila_model as aquila
+import aquila_dream as dream
 import losses
 import ops
 import scopes
