@@ -6,15 +6,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import copy
 from datetime import datetime
-import os.path
-import re
-import time
-import sys
 
-import os
-from io import BytesIO
 import numpy as np
 from functools import partial
 import PIL.Image
