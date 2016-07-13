@@ -306,6 +306,7 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
           # 2048
           abstract_feats = ops.fc(net, num_abs_features, scope='abst_feats',
                                   restore=restore_logits)
+	  end_points['abstract_feats'] = abstract_feats
           # 1024
           logits = ops.fc(abstract_feats, DEMOGRAPHIC_GROUPS,
                           activation=None, scope='logits',
