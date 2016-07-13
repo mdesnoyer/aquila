@@ -1,4 +1,4 @@
-# score CNN
+# this tests the data manually
 
 from __future__ import absolute_import
 from __future__ import division
@@ -43,6 +43,7 @@ def fmt_num(num):
     '''
     return locale.format("%d", num, grouping=True)
 
+BATCH_SIZE = 22
 # ----------------------- stuffs --------------------------------------------- #
 def crop_to_bounding_box(image, offset_height, offset_width, target_height,
                          target_width, dynamic_shape=False):
@@ -305,7 +306,7 @@ def inference(inputs, abs_feats=1024, for_training=True,
     return logits, endpoints
 
 
-def get_enqueue_op(image_phds, queue):
+def get_enqueue_op(image_phds, win_vecs, queue):
     """
     Obtains the TensorFlow batch enqueue operation.
     :param fn_phds: Filename TensorFlow placeholders (size=[batch_size])
@@ -330,75 +331,60 @@ def get_enqueue_op(image_phds, queue):
         img = resize_image_with_crop_or_pad(img, 314, 558, dynamic_shape=True)
         # resize to 314 x 314
         img = tf.expand_dims(img, 0)
-        img = tf.image.resize_bilinear(img, (299, 299))
+        img = tf.image.resize_bilinear(img, (314, 314))
         img = tf.squeeze(img, [0])
-        im_tensors.append(img)
+        # random crop the image
+        cropped_im = tf.random_crop(img, [299, 299, 3])
+        # random flip left/right
+        im_tensor = tf.image.random_flip_left_right(cropped_im)
+        im_tensors.append(im_tensor)
     packed_ims = tf.to_float(tf.pack(im_tensors))
     packed_fns = tf.pack(image_phds)
-    enq_op = queue.enqueue_many([packed_ims, packed_fns])
+    packed_wins = tf.pack(win_vecs)
+    enq_op = queue.enqueue_many([packed_ims, packed_wins, packed_fns])
     return enq_op
 
 
-def qworker(enq_op, image_phds, imgs, sess):
+def qworker(enq_op, image_phds, win_vecs, fn, sess):
     feed_dict = dict()
-    while imgs:
-        for i in range(BATCH_SIZE):
-            if not imgs:
-                break
-            feed_dict[image_phds[i]] = imgs.pop()
-        sess.run(enq_op, feed_dict=feed_dict)
+    with open(fn, 'r') as f:
+        fns = []
+        wvs = []
+        for line in f:
+            if len(fns) > BATCH_SIZE:
+                raise Exception('gah')
+            if len(fns) == BATCH_SIZE:
+                for n, (i, j) in enumerate(zip(fns, wvs)):
+                    feed_dict[image_phds[n]] = i
+                    feed_dict[win_vecs[n]] = j
+                sess.run(enq_op, feed_dict=feed_dict)
+                fns = []
+                wvs = []
+            sp = line.strip().split(',')
+            f1 = os.path.join('/data/aquila_training_images/', sp[0])
+            f2 = os.path.join('/data/aquila_training_images/', sp[1])
+            n = np.array([int(x) for x in sp[2:]])
+            n1 = n[:10]
+            n2 = n[11:-1]
+            fns.append(f1)
+            fns.append(f2)
+            wvs.append(n1)
+            wvs.append(n2)
     print('qworker complete')
 
-
-scores = [[1,-2.2088741],[2,-1.78813],[3,-1.53112],[4,-1.35944],[5,-1.23887],
-          [6,-1.14968],[7,-1.07897],[8,-1.02086],[9,-0.972179],[10,-0.930653],
-          [11,-0.894573],[12,-0.86285],[13,-0.834713],[14,-0.80927174],
-          [15,-0.786055],[16,-0.76463],[17,-0.744799],[18,-0.726232],
-          [19,-0.708703],[20,-0.692017],[21,-0.676046],[22,-0.660703],
-          [23,-0.645833],[24,-0.631345],[25,-0.617206],[26,-0.603317],
-          [27,-0.58965407],[28,-0.57624],[29,-0.562964],[30,-0.54982],
-          [31,-0.536794],[32,-0.523905],[33,-0.511157],[34,-0.498506],
-          [35,-0.485999],[36,-0.473631],[37,-0.4614],[38,-0.449258],
-          [39,-0.437356],[40,-0.425547],[41,-0.413882],[42,-0.402366],
-          [43,-0.39095063],[44,-0.379681],[45,-0.368493],[46,-0.3574],
-          [47,-0.346395],[48,-0.335468],[49,-0.324642],[50,-0.3138115],
-          [51,-0.303033],[52,-0.292293],[53,-0.281545],[54,-0.270779],
-          [55,-0.25996],[56,-0.249109],[57,-0.238192],[58,-0.22730778],
-          [59,-0.216352],[60,-0.205327],[61,-0.194218],[62,-0.183042],
-          [63,-0.171804],[64,-0.160432],[65,-0.148941],[66,-0.137351],
-          [67,-0.12560647],[68,-0.113628],[69,-0.101433],[70,-0.0890523],
-          [71,-0.076399611],[72,-0.063471],[73,-0.050288193],[74,-0.036797234],
-          [75,-0.022958475],[76,-0.0087503032],[77,0.0058479787],
-          [78,0.020863804],[79,0.036340461],[80,0.05225132],[81,0.0687374],
-          [82,0.085806038],[83,0.103489],[84,0.121754],[85,0.140789],
-          [86,0.160679],[87,0.181482],[88,0.203319],[89,0.226377],
-          [90,0.250871],[91,0.277246],[92,0.306049],[93,0.338085],
-          [94,0.373872],[95,0.414742],[96,0.46338164],[97,0.52417223],
-          [98,0.60686182],[99,0.738631]]
-
-
-def get_neon_score(valence):
-    for ns, val in scores:
-        if valence < val:
-            return ns - 1
-    return ns
-
-
-pretrained_model_checkpoint_path = '/data/aquila_v2_snaps/model.ckpt-150000'
-# pretrained_model_checkpoint_path =
-# '/data/aquila_v2_snaps_run2_64maxacc/model.ckpt-170000'
-# reader = tf.train.NewCheckpointReader(pretrained_model_checkpoint_path)
-# print(reader.debug_string().decode("utf-8"))
+pairsfn = '/data/aquila_v2/combined_testing'
 
 print('Constructing queue')
 image_phds = [tf.placeholder(tf.string, shape=[]) for _ in range(BATCH_SIZE)]
+win_vecs = [tf.placeholder(tf.int8, shape=[10]) for _ in range(BATCH_SIZE)]
+
 tf_queue = tf.FIFOQueue(BATCH_SIZE * num_gpus * 2,
-                        [tf.float32, tf.string],
-                        shapes=[[299, 299, 3], []])
+                        [tf.float32, tf.int8, tf.string],
+                        shapes=[[299, 299, 3], [10], []])
 
-enq_op = get_enqueue_op(image_phds, tf_queue)
+enq_op = get_enqueue_op(image_phds, win_vecs, tf_queue)
 
-inputs, imfns = tf_queue.dequeue_many(BATCH_SIZE)
+inputs, win_vs, imfns = tf_queue.dequeue_many(BATCH_SIZE)
 # for i in xrange(1):
 #     with tf.device('/gpu:%d' % i):
 #         with tf.name_scope('%s_%d' % (aquila.TOWER_NAME, i)) as scope:
@@ -419,58 +405,33 @@ sess.run(init)
 variables_to_restore = tf.get_collection(
                 slim.variables.VARIABLES_TO_RESTORE)
 restorer = tf.train.Saver(variables_to_restore)
+pretrained_model_checkpoint_path = '/data/aquila_v2_snaps/model.ckpt-150000'
+pretrained_model_checkpoint_path = \
+    '/data/aquila_v2_snaps_run2_64maxacc/model.ckpt-170000'
 restorer.restore(sess, pretrained_model_checkpoint_path)
 print('%s: Pre-trained model restored from %s' %
                     (datetime.now(), pretrained_model_checkpoint_path))
 
-# the name of the variable of interest is
-# testtrain/testing/logits/abst_feats/Relu:0
-print('Fetching all the images')
-
-imgs = glob('/data/CNN/*')
-print('Fetched %s images.' % fmt_num(len(imgs)))
-total = len(imgs)
-
-t = Thread(target=qworker, args=(enq_op, image_phds, imgs, sess))
+t = Thread(target=qworker, args=(enq_op, image_phds, win_vecs, pairsfn, sess))
+t.daemon = True
 t.start()
 
 obtained = 0
-print_inc = 1
-start = time.time()
-
-all_fns = []
-all_logits = []
-while obtained < total:
-    imfns_n, logits_n = sess.run([imfns, logits])
-    all_fns.append(imfns_n)
-    all_logits.append(logits_n)
-    obtained += len(imfns_n)
-
-afns = np.hstack(all_fns)
-alogis = np.vstack(all_logits)
-
-all_ns = np.zeros_like(alogis)
-for i in range(alogis.shape[0]):
-    for j in range(alogis.shape[1]):
-        all_ns[i, j] = alogis[i, j]
-
-cstr = '\n'.join([','.join([afns[n].split('/')[-1]]+[str(x) for x in all_ns[n]])
-               for n in range(len(afns))])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+cor = 0
+incor = 0
+btch = 0
+while obtained < 100000:
+    imfns_n, logits_n, win_v_n = sess.run([imfns, logits, win_vs])
+    for i in range(0, len(imfns_n), 2):
+        aob = list((logits_n[i] > logits_n[i+1])[win_v_n[i] > win_v_n[i+1]])
+        boa = list((logits_n[i] < logits_n[i+1])[win_v_n[i] < win_v_n[i+1]])
+        for k in aob:
+            if k: cor += 1
+            else: incor += 1
+        for k in boa:
+            if k: cor += 1
+            else: incor += 1
+    btch += 1
+    if not btch % 10:
+        print('batch %i: %i cor, %i incor, acc=%.3f' % (btch, cor, incor,
+                                                        float(cor)/(incor+cor)))
