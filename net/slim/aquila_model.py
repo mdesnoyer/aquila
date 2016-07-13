@@ -311,6 +311,7 @@ def aquila(inputs, dropout_keep_prob=0.8, num_abs_features=1024, is_training=Tru
                           activation=None, scope='logits',
                           restore=restore_logits)
           # (size is DEMOGRAPHIC_GROUPS, i.e., 9)
+	  end_points['abstract_feats'] = abstract_feats
           end_points['logits'] = logits
       return logits, end_points
 
