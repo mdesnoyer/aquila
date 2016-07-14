@@ -4,6 +4,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from PIL import Image
+
 import copy
 from datetime import datetime
 import os.path
@@ -24,7 +26,6 @@ from tensorflow.python.ops import image_ops
 from tensorflow.python.ops import math_ops
 from tensorflow.python.ops import array_ops
 from tensorflow.python import ops
-from PIL import Image
 
 from threading import Thread
 
@@ -349,40 +350,29 @@ def qworker(enq_op, image_phds, imgs, sess):
         sess.run(enq_op, feed_dict=feed_dict)
     print('qworker complete')
 
+print('Fetching all the images')
 
-scores = [[1,-2.2088741],[2,-1.78813],[3,-1.53112],[4,-1.35944],[5,-1.23887],
-          [6,-1.14968],[7,-1.07897],[8,-1.02086],[9,-0.972179],[10,-0.930653],
-          [11,-0.894573],[12,-0.86285],[13,-0.834713],[14,-0.80927174],
-          [15,-0.786055],[16,-0.76463],[17,-0.744799],[18,-0.726232],
-          [19,-0.708703],[20,-0.692017],[21,-0.676046],[22,-0.660703],
-          [23,-0.645833],[24,-0.631345],[25,-0.617206],[26,-0.603317],
-          [27,-0.58965407],[28,-0.57624],[29,-0.562964],[30,-0.54982],
-          [31,-0.536794],[32,-0.523905],[33,-0.511157],[34,-0.498506],
-          [35,-0.485999],[36,-0.473631],[37,-0.4614],[38,-0.449258],
-          [39,-0.437356],[40,-0.425547],[41,-0.413882],[42,-0.402366],
-          [43,-0.39095063],[44,-0.379681],[45,-0.368493],[46,-0.3574],
-          [47,-0.346395],[48,-0.335468],[49,-0.324642],[50,-0.3138115],
-          [51,-0.303033],[52,-0.292293],[53,-0.281545],[54,-0.270779],
-          [55,-0.25996],[56,-0.249109],[57,-0.238192],[58,-0.22730778],
-          [59,-0.216352],[60,-0.205327],[61,-0.194218],[62,-0.183042],
-          [63,-0.171804],[64,-0.160432],[65,-0.148941],[66,-0.137351],
-          [67,-0.12560647],[68,-0.113628],[69,-0.101433],[70,-0.0890523],
-          [71,-0.076399611],[72,-0.063471],[73,-0.050288193],[74,-0.036797234],
-          [75,-0.022958475],[76,-0.0087503032],[77,0.0058479787],
-          [78,0.020863804],[79,0.036340461],[80,0.05225132],[81,0.0687374],
-          [82,0.085806038],[83,0.103489],[84,0.121754],[85,0.140789],
-          [86,0.160679],[87,0.181482],[88,0.203319],[89,0.226377],
-          [90,0.250871],[91,0.277246],[92,0.306049],[93,0.338085],
-          [94,0.373872],[95,0.414742],[96,0.46338164],[97,0.52417223],
-          [98,0.60686182],[99,0.738631]]
+imgs = glob('/data/CNN/*.jpeg')
+print('Fetched %s images.' % fmt_num(len(imgs)))
+to_score = []
+dst = '/tmp/_aq_im_sc_r'
+try:
+    os.mkdir(dst)
+except:
+    pass
 
-
-def get_neon_score(valence):
-    for ns, val in scores:
-        if valence < val:
-            return ns - 1
-    return ns
-
+for img in imgs:
+    r = Image.open(img)
+    w, h = r.size
+    mxheight = 314
+    mxwidth = 558
+    r_ratio = min(mxwidth/float(w), mxheight/float(h))
+    nh = int(h * r_ratio)
+    nw = int(w * r_ratio)
+    r = r.resize((nw, nh), Image.ANTIALIAS)
+    nfn = os.path.join(dst, img.split('/')[-1])
+    r.save(nfn)
+    to_score.append(nfn)
 
 pretrained_model_checkpoint_path = '/data/aquila_v2_snaps/model.ckpt-150000'
 # pretrained_model_checkpoint_path =
@@ -425,10 +415,8 @@ print('%s: Pre-trained model restored from %s' %
 
 # the name of the variable of interest is
 # testtrain/testing/logits/abst_feats/Relu:0
-print('Fetching all the images')
 
-imgs = glob('/data/CNN/*')
-print('Fetched %s images.' % fmt_num(len(imgs)))
+imgs = to_score
 total = len(imgs)
 
 t = Thread(target=qworker, args=(enq_op, image_phds, imgs, sess))
@@ -440,22 +428,33 @@ start = time.time()
 
 all_fns = []
 all_logits = []
+all_abstf = []
+all_inputs = []
 while obtained < total:
-    imfns_n, logits_n = sess.run([imfns, logits])
+    imfns_n, logits_n, af_n, inputs_n = sess.run([imfns, logits,
+                                                  endpoints['abstract_feats'],
+                                                  inputs])
     all_fns.append(imfns_n)
     all_logits.append(logits_n)
+    all_abstf.append(af_n)
+    all_inputs.append(inputs_n)
     obtained += len(imfns_n)
 
 afns = np.hstack(all_fns)
 alogis = np.vstack(all_logits)
+afnsa = np.vstack(all_abstf)
 
-all_ns = np.zeros_like(alogis)
-for i in range(alogis.shape[0]):
-    for j in range(alogis.shape[1]):
-        all_ns[i, j] = alogis[i, j]
+np.save('/tmp/cnn_fns.npy', afns)
+np.save('/tmp/cnn_logis.npy', alogis)
+np.save('/tmp/cnn_absf.npy', afnsa)
 
-cstr = '\n'.join([','.join([afns[n].split('/')[-1]]+[str(x) for x in all_ns[n]])
-               for n in range(len(afns))])
+# all_ns = np.zeros_like(alogis)
+# for i in range(alogis.shape[0]):
+#     for j in range(alogis.shape[1]):
+#         all_ns[i, j] = alogis[i, j]
+#
+# cstr = '\n'.join([','.join([afns[n].split('/')[-1]]+[str(x) for x in all_ns[n]])
+#                for n in range(len(afns))])
 
 
 
