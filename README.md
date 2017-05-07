@@ -2,8 +2,6 @@
 
 This repository contains the Aquila model as implemented in [TensorFlow](https://www.tensorflow.org/). It predicts users' relative ranking of images from a large number of noisy individual ranking pairs. Demographic buckets of users can also be specified for those applications where the ranking is likely to vary by demographic. For more details on the mathematics of the model and the training process, see [the white paper](aquila-learning-predict.pdf).
 
-[TOC]
-
 # Architecture
 
 The model consists of an [Inception-v3](https://github.com/tensorflow/models/tree/master/inception) tower with one output node for the final prediction and a second to last layer of 1024 abstract features, which are used for demographic targeting. Using the final prediction, the estimated lift of image A over image B is defined by:
